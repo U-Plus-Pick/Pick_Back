@@ -1,20 +1,20 @@
-import { calculateFamilyBundleDiscountSchema } from "../schemas/calculateFamilyBundleDiscountSchema.js";
-import { calculateFamilyBundle } from "../functions/calculateFamilyBundle.js";
-import { openai } from "../openai/client.js";
+import { calculateFamilyBundleDiscountSchema } from '../schemas/calculateFamilyBundleDiscountSchema.js'
+import { calculateFamilyBundle } from '../functions/calculateFamilyBundle.js'
+import { openai } from '../openai/client.js'
 
-const functions = [calculateFamilyBundleDiscountSchema];
+const functions = [calculateFamilyBundleDiscountSchema]
 
 // 요금제 api 연결하기 전에 더미데이터입니다.
 const testPlans = [
   {
-    name: "5G 프리미어",
+    name: '5G 프리미어',
     price: 95000,
-    alias: ["5G 프리미", "5G 프리미엄", "프리미어", "5G 프리미어 요금제"],
+    alias: ['5G 프리미', '5G 프리미엄', '프리미어', '5G 프리미어 요금제'],
   }, // 월 44, 66, 88
-  { name: "5G 스탠다드", price: 75000 }, // 월 33, 55, 66
-  { name: "LTE 베이직", price: 61000 }, // 월 22, 33, 44
-  { name: "5G 슬림", price: 45000 }, // 월 22,33,44
-];
+  { name: '5G 스탠다드', price: 75000 }, // 월 33, 55, 66
+  { name: 'LTE 베이직', price: 61000 }, // 월 22, 33, 44
+  { name: '5G 슬림', price: 45000 }, // 월 22,33,44
+]
 
 const systemPrompt = `
 당신은 친절하고 전문적인 LG U+ 통합 고객서비스 챗봇입니다. 멤버십 혜택 안내, 요금제 추천, 결합 할인 상담을 종합적으로 제공합니다.
@@ -92,115 +92,104 @@ const systemPrompt = `
 - 브랜드별 제휴 혜택 확인 시 관련 함수 호출
 - 요금제 추천 요청 시 recommendPlan 함수 호출
 - 결합 할인 계산 시 calculateFamilyBundleDiscount 함수 호출
-`;
+`
 
 const keywordRules = [
   {
     pattern: /지인\s?결합/,
-    response:
-      "지인 결합 할인에 대한 정보는 저희 서비스에서 확인할 수 있어요\n`U+Pick url`",
+    response: '지인 결합 할인에 대한 정보는 저희 서비스에서 확인할 수 있어요\n`U+Pick url`',
   },
   {
     pattern: /어떤\s?결합.*(할인|가능|받을|있나|알려)/,
-    response: "지인 결합과 가족 결합 중 어떤 결합으로 알려드릴까요?",
+    response: '지인 결합과 가족 결합 중 어떤 결합으로 알려드릴까요?',
   },
-];
+]
 
 function findClosestPlanPrice(planName) {
-  const exactMatch = testPlans.find((p) => planName.includes(p.name));
-  if (exactMatch) return exactMatch.price;
+  const exactMatch = testPlans.find(p => planName.includes(p.name))
+  if (exactMatch) return exactMatch.price
 
-  const lowerInput = planName.toLowerCase();
-  const nameMatch = testPlans.find((p) =>
-    lowerInput.includes(p.name.toLowerCase().replace(/\s/g, ""))
-  );
-  if (nameMatch) return nameMatch.price;
+  const lowerInput = planName.toLowerCase()
+  const nameMatch = testPlans.find(p =>
+    lowerInput.includes(p.name.toLowerCase().replace(/\s/g, ''))
+  )
+  if (nameMatch) return nameMatch.price
 
-  const aliasMatch = testPlans.find((p) =>
-    p.alias?.some((alias) =>
-      lowerInput.includes(alias.toLowerCase().replace(/\s/g, ""))
-    )
-  );
+  const aliasMatch = testPlans.find(p =>
+    p.alias?.some(alias => lowerInput.includes(alias.toLowerCase().replace(/\s/g, '')))
+  )
 
-  if (aliasMatch) return aliasMatch.price;
-  return null;
+  if (aliasMatch) return aliasMatch.price
+  return null
 }
 
 export const gptChatHandler = async (req, res) => {
-  const messages = req.body.messages || [];
-  const userMessages = messages.filter((m) => m.role === "user");
-  const input =
-    userMessages.length > 0
-      ? userMessages[userMessages.length - 1].content.trim()
-      : "";
+  const messages = req.body.messages || []
+  const userMessages = messages.filter(m => m.role === 'user')
+  const input = userMessages.length > 0 ? userMessages[userMessages.length - 1].content.trim() : ''
 
-  const rule = keywordRules.find((rule) =>
+  const rule = keywordRules.find(rule =>
     rule.pattern
       ? rule.pattern.test(input)
-      : rule.keywords?.some((keyword) => input.includes(keyword))
-  );
+      : rule.keywords?.some(keyword => input.includes(keyword))
+  )
 
   if (rule) {
-    return res.send(rule.response);
+    return res.send(rule.response)
   }
 
-  const systemMessages = [
-    { role: "system", content: systemPrompt },
-    ...messages,
-  ];
+  const systemMessages = [{ role: 'system', content: systemPrompt }, ...messages]
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
+      model: 'gpt-4.1-mini',
       messages: systemMessages,
       functions,
-      function_call: "auto",
-    });
+      function_call: 'auto',
+    })
 
-    const choice = response.choices[0];
-    const funcCall = choice.message.function_call;
+    const choice = response.choices[0]
+    const funcCall = choice.message.function_call
 
     if (!funcCall) {
-      return res.send(choice.message.content);
+      return res.send(choice.message.content)
     }
 
-    const args = JSON.parse(funcCall.arguments);
+    const args = JSON.parse(funcCall.arguments)
 
-    let prices = [];
+    let prices = []
     // 가격으로 입력
     if (args.planNames && Array.isArray(args.planNames)) {
       prices = args.planNames
         .map(findClosestPlanPrice) // testPlans 에서 price 가져옴
-        .filter((p) => p !== null);
+        .filter(p => p !== null)
     }
     // 요금제 이름으로 입력
     else if (args.planPrices && Array.isArray(args.planPrices)) {
-      prices = args.planPrices
-        .map((p) => parseInt(p, 10))
-        .filter((p) => !isNaN(p));
+      prices = args.planPrices.map(p => parseInt(p, 10)).filter(p => !isNaN(p))
     }
 
     if (prices.length === 0) {
       return res.send(
-        "입력하신 요금제명을 찾을 수 없거나 가격이 없습니다. 정확한 요금제명 또는 가격을 입력해주세요."
-      );
+        '입력하신 요금제명을 찾을 수 없거나 가격이 없습니다. 정확한 요금제명 또는 가격을 입력해주세요.'
+      )
     }
 
-    const result = calculateFamilyBundle(prices);
+    const result = calculateFamilyBundle(prices)
     const finalResponse = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
+      model: 'gpt-4.1-mini',
       messages: [
         ...messages,
         {
-          role: "function",
-          name: "calculateFamilyBundleDiscount",
+          role: 'function',
+          name: 'calculateFamilyBundleDiscount',
           content: JSON.stringify(result),
         },
       ],
-    });
-    res.send(finalResponse.choices[0].message.content);
+    })
+    res.send(finalResponse.choices[0].message.content)
   } catch (err) {
-    console.error("GPT 오류:", err);
-    res.status(500).send("GPT 처리 중 오류 발생");
+    console.error('GPT 오류:', err)
+    res.status(500).send('GPT 처리 중 오류 발생')
   }
-};
+}

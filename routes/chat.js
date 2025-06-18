@@ -1,7 +1,7 @@
-import express from "express";
-import { gptChatHandler } from "../services/chatService.js";
+import express from 'express'
+import { gptChatHandler } from '../services/chatService.js'
 
-const router = express.Router();
-router.post("/chat", gptChatHandler); 
+const router = express.Router()
+router.post('/chat', gptChatHandler)
 
-export default router;
+export default router
