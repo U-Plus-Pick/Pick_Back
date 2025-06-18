@@ -10,7 +10,7 @@ router.post('/register', async (req, res) => {
   const { name, birthdate, email, phone, password, passwordConfirm, plan } = req.body
 
   if (password !== passwordConfirm) {
-    return res.status(400).json({ message: '비밀번호와 비밀번호 확인이 일치하지 않습니다.' })
+    return res.status(400).json({ message: '비밀번호가 일치하지 않습니다.' })
   }
 
   try {
@@ -19,10 +19,8 @@ router.post('/register', async (req, res) => {
 
     const user = new User({ name, birthdate, email, phone, password, plan })
     await user.save()
-
     res.status(201).json({ message: '회원가입 성공' })
   } catch (err) {
-    console.error(err)
     res.status(500).json({ message: '서버 오류' })
   }
 })
@@ -41,15 +39,20 @@ router.post('/login', async (req, res) => {
 
     res.json({ message: '로그인 성공', token })
   } catch (err) {
-    console.error(err)
     res.status(500).json({ message: '서버 오류' })
   }
 })
 
-// 토큰 필요 라우트 예시
+// 내 정보 조회 (토큰 필요)
 router.get('/me', authMiddleware, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password')
+    const user = await User.findById(req.user.id).select('-password').lean()
+    if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' })
+
+    if (user.birthdate) {
+      user.birthdate = user.birthdate.toISOString().split('T')[0]
+    }
+
     res.json(user)
   } catch (err) {
     res.status(500).json({ message: '서버 오류' })
