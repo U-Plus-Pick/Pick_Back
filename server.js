@@ -1,7 +1,9 @@
 //express 불러오기
 import express from 'express'
+
 //express 사용
 const app = express()
+
 //port 번호 설정
 const port = 3000
 

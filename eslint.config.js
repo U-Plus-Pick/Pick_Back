@@ -17,8 +17,8 @@ export default [
         ...globals.node,
       },
       parserOptions: {
-        ecmaVersion: 'latest',
         sourceType: 'module',
+        ecmaVersion: 'latest',
       },
     },
 

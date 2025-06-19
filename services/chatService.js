@@ -1,8 +1,71 @@
 import { calculateFamilyBundleDiscountSchema } from '../schemas/calculateFamilyBundleDiscountSchema.js'
 import { calculateFamilyBundle } from '../functions/calculateFamilyBundle.js'
-import { openai } from '../openai/client.js'
+import openai from '../config/openai.js'
+import { executeFunction } from '../functions/index.js'
 
-const functions = [calculateFamilyBundleDiscountSchema]
+const BundleDiscountFunctions = [calculateFamilyBundleDiscountSchema]
+
+const membershipFunctions = [
+  {
+    name: 'get_membership_benefits',
+    description: '회원 등급에 따른 멤버십 혜택을 조회합니다',
+    parameters: {
+      type: 'object',
+      properties: {
+        grade: {
+          type: 'string',
+          enum: ['VIP', '우수'],
+          description: '회원 등급 (VIP: VIP등급 혜택, 우수: 우수등급 혜택)',
+        },
+      },
+      required: ['grade'],
+    },
+  },
+  {
+    name: 'get_brand_benefits',
+    description: '특정 브랜드/매장에서 받을 수 있는 LG 멤버십 혜택을 조회합니다',
+    parameters: {
+      type: 'object',
+      properties: {
+        brand_name: {
+          type: 'string',
+          description: '브랜드 또는 매장 이름',
+        },
+        member_grade: {
+          type: 'string',
+          enum: ['VIP', '우수'],
+          description: '회원 등급 (선택사항)',
+        },
+      },
+      required: ['brand_name'],
+    },
+  },
+  {
+    name: 'check_membership_grade',
+    description:
+      '요금제 금액을 기반으로 멤버십 등급을 확인하거나, 특정 등급 달성 조건을 안내합니다',
+    parameters: {
+      type: 'object',
+      properties: {
+        plan_amount: {
+          type: 'number',
+          description: '모바일 요금제 금액 (원)',
+        },
+        inquiry_type: {
+          type: 'string',
+          enum: ['check_grade', 'grade_requirements'],
+          description: 'check_grade: 요금제로 등급 확인, grade_requirements: 등급 달성 조건 문의',
+        },
+        target_grade: {
+          type: 'string',
+          enum: ['VIP', 'VVIP', '우수'],
+          description: '달성하고 싶은 목표 등급 (grade_requirements일 때 사용)',
+        },
+      },
+      required: ['inquiry_type'],
+    },
+  },
+]
 
 // 요금제 api 연결하기 전에 더미데이터입니다.
 const testPlans = [
@@ -16,8 +79,8 @@ const testPlans = [
   { name: '5G 슬림', price: 45000 }, // 월 22,33,44
 ]
 
-const systemPrompt = `
-당신은 친절하고 전문적인 LG U+ 통합 고객서비스 챗봇입니다. 멤버십 혜택 안내, 요금제 추천, 결합 할인 상담을 종합적으로 제공합니다.
+// 공통 시스템 프롬프트
+const SYSTEM_PROMPT = `당신은 친절하고 전문적인 LG U+ 통합 고객서비스 챗봇입니다. 멤버십 혜택 안내, 요금제 추천, 결합 할인 상담을 종합적으로 제공합니다.
 
 1. 멤버십 서비스
 
@@ -27,8 +90,8 @@ const systemPrompt = `
 - **우수**: 그 외 모든 고객
 
 멤버십 등급별 혜택
-- **VIP 등급**: membershipGrade가 'VIP'인 혜택들
-- **우수 등급**: membershipGrade가 'BASIC'인 혜택들
+- **VIP 등급**: membership_grade가 'VIP'인 혜택들
+- **우수 등급**: membership_grade가 'BASIC'인 혜택들
 
 멤버십 기능
 1. VIP 회원은 VIP 등급 전용 혜택 이용 가능
@@ -44,12 +107,12 @@ const systemPrompt = `
 - 특별 요구사항 (동영상 시청 등)
 
 함수 호출 규칙
-사용자의 요구사항에 따라 반드시 recommendPlan 함수를 호출하세요.
+사용자의 요구사항에 따라 반드시 'recommendPlan' 함수를 호출하세요.
 
 **인자값 설정 가이드:**
-- plan_monthly_fee: 사용자가 예산을 언급하지 않으면 9999 (무제한)
-- plan_data_count: 유튜브, 동영상 시청 시 최소 50GB 이상
-- plan_voice_minutes: 전화 거의 안 한다면 0, 자주 한다면 100 이상
+- 'plan_monthly_fee': 사용자가 예산을 언급하지 않으면 9999 (무제한)
+- 'plan_data_count': 유튜브, 동영상 시청 시 최소 50GB 이상
+- 'plan_voice_minutes': 전화 거의 안 한다면 0, 자주 한다면 100 이상
 
 3. 결합 할인 서비스
 
@@ -67,7 +130,7 @@ const systemPrompt = `
 
 답변 형식 규칙
 1. **혜택 안내 시**: 반드시 "• "로 시작하는 목록 형태로 작성
-2. **목록 완료 후**: 반드시 빈 줄을 추가 (줄바꿈 2번)
+2. **목록 완료 후**: 반드시 빈 줄을 추가 (줄바꿈 1번)
 3. **마지막 안내문**: ("더 궁금한...", "편하게 말씀해..." 등)은 반드시 별도의 문단으로 작성
 
 요금제 추천 결과 표시
@@ -90,8 +153,9 @@ const systemPrompt = `
 함수 호출 조건
 - 고객이 요금제 금액을 언급하거나 등급 조건을 물어보면 적절한 함수를 호출하여 정확한 정보를 제공
 - 브랜드별 제휴 혜택 확인 시 관련 함수 호출
-- 요금제 추천 요청 시 recommendPlan 함수 호출
-- 결합 할인 계산 시 calculateFamilyBundleDiscount 함수 호출
+- 요금제 추천 요청 시 'recommendPlan' 함수 호출
+- 결합 할인 계산 시 'calculateFamilyBundleDiscount' 함수 호출
+
 `
 
 const keywordRules = [
@@ -123,7 +187,7 @@ function findClosestPlanPrice(planName) {
   return null
 }
 
-export const gptChatHandler = async (req, res) => {
+export const bundleDiscountChatWithGPT = async (req, res) => {
   const messages = req.body.messages || []
   const userMessages = messages.filter(m => m.role === 'user')
   const input = userMessages.length > 0 ? userMessages[userMessages.length - 1].content.trim() : ''
@@ -138,13 +202,13 @@ export const gptChatHandler = async (req, res) => {
     return res.send(rule.response)
   }
 
-  const systemMessages = [{ role: 'system', content: systemPrompt }, ...messages]
+  const systemMessages = [{ role: 'system', content: SYSTEM_PROMPT }, ...messages]
 
   try {
     const response = await openai.chat.completions.create({
       model: 'gpt-4.1-mini',
       messages: systemMessages,
-      functions,
+      functions: BundleDiscountFunctions,
       function_call: 'auto',
     })
 
@@ -191,5 +255,48 @@ export const gptChatHandler = async (req, res) => {
   } catch (err) {
     console.error('GPT 오류:', err)
     res.status(500).send('GPT 처리 중 오류 발생')
+  }
+}
+
+export const membershipChatWithGPT = async userMessage => {
+  // eslint-disable-next-line no-useless-catch
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4.1-mini',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userMessage },
+      ],
+      functions: membershipFunctions,
+      function_call: 'auto',
+    })
+
+    const message = response.choices[0].message
+
+    if (message.function_call) {
+      const functionName = message.function_call.name
+      const functionArgs = JSON.parse(message.function_call.arguments)
+      const functionResult = await executeFunction(functionName, functionArgs)
+
+      const secondResponse = await openai.chat.completions.create({
+        model: 'gpt-4.1-mini',
+        messages: [
+          {
+            role: 'system',
+            content:
+              '함수 결과를 바탕으로 친절하고 자세하게 답변해주세요. 혜택이 많은 경우 주요 혜택들을 "-"로 시작하는 목록 형태로 정리해서 보기 좋게 안내해주세요. 목록의 각 항목은 짧고 간결하게 작성하고, 목록 앞뒤에는 한 줄씩 공백을 추가하여 문단을 구분하고, 마지막 안내문은 목록과 별도의 문단으로 작성해주세요.',
+          },
+          { role: 'user', content: userMessage },
+          { role: 'assistant', content: null, function_call: message.function_call },
+          { role: 'function', name: functionName, content: JSON.stringify(functionResult) },
+        ],
+      })
+
+      return secondResponse.choices[0].message.content
+    }
+
+    return message.content
+  } catch (error) {
+    throw error
   }
 }
