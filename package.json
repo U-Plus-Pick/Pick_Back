@@ -15,12 +15,21 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.17.0",
-    "openai": "^5.5.1"
-  },
-  "devDependencies": {
+    "openai": "^5.5.1",
     "nodemon": "^3.0.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/U-Plus-Pick/Pick_Back.git"
+  },
+  "bugs": {
+    "url": "https://github.com/U-Plus-Pick/Pick_Back/issues"
+  },
+  "homepage": "https://github.com/U-Plus-Pick/Pick_Back#readme"
 }
