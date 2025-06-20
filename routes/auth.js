@@ -58,5 +58,8 @@ router.get('/me', authMiddleware, async (req, res) => {
     res.status(500).json({ message: '서버 오류' })
   }
 })
-
+// 로그아웃 (POST /api/auth/logout)
+router.post('/logout', (req, res) => {
+  res.json({ message: '로그아웃 성공' })
+})
 export default router
