@@ -6,7 +6,7 @@ import PartyMember from '../models/partyMember.model.js'
 
 const router = express.Router()
 
-// 파티 매칭
+// 매칭 API
 router.post('/match', async (req, res) => {
   try {
     const leader = await JoinRequest.findOne({ role: 'leader', join_status: 'pending' }).sort({
@@ -43,7 +43,7 @@ router.post('/match', async (req, res) => {
   }
 })
 
-// 모든 그룹과 결합원 정보 가져오기
+// 모든 파티 정보 조회 API
 router.get('/all', async (req, res) => {
   try {
     const parties = await Party.find().populate({
@@ -69,8 +69,9 @@ router.get('/all', async (req, res) => {
   }
 })
 
-// 파티장 또는 조건에 따른 파티 해체
-router.post('/leader-leave', async (req, res) => {
+// 파티 나가기 API
+// 파티 나가기 API
+router.post('/leave', async (req, res) => {
   try {
     const { partyId, leavingJoinRequestId } = req.body
     if (!partyId || !leavingJoinRequestId) {
@@ -83,32 +84,61 @@ router.post('/leader-leave', async (req, res) => {
 
     const leaderJoinRequestId = party.leader_join_request_id.toString()
     const leavingId = leavingJoinRequestId.toString()
+    const isLeaderLeaving = leaderJoinRequestId === leavingId
 
     const members = await PartyMember.find({ party_id: partyId })
-    const isLeaderLeaving = leaderJoinRequestId === leavingId
-    const totalMembersCount = 1 + members.length
 
-    if (isLeaderLeaving || totalMembersCount <= 2) {
+    // 👉 남은 인원 수 계산 (나가려는 사람 제외)
+    const totalMembersAfterLeave =
+      (isLeaderLeaving ? 0 : 1) +
+      members.filter(m => m.member_join_request_id.toString() !== leavingId).length
+
+    // ✅ 해체 조건: 파티장이 나가거나, 파티장 포함 인원이 2명 이하일 경우
+    if (isLeaderLeaving || totalMembersAfterLeave <= 2) {
       party.disbanded_at = new Date()
       await party.save()
 
-      const joinRequestIds = [leaderJoinRequestId, ...members.map(m => m.member_join_request_id)]
+      // 🟡 남아 있는 사람들 (떠나는 사람 제외)
+      const remainingJoinRequestIds = [
+        leaderJoinRequestId,
+        ...members.map(m => m.member_join_request_id.toString()),
+      ].filter(id => id !== leavingId)
 
+      // 남은 인원들을 대기열로 복귀시킴
       await JoinRequest.updateMany(
-        { _id: { $in: joinRequestIds } },
+        { _id: { $in: remainingJoinRequestIds } },
         { $set: { join_status: 'pending', priority: 1 } }
       )
 
+      // 모든 파티 멤버 삭제
       await PartyMember.deleteMany({ party_id: partyId })
 
+      // 나가는 사람의 요청은 삭제
+      await JoinRequest.findByIdAndDelete(leavingJoinRequestId)
+
       return res.json({
-        message: '파티가 해체되었습니다. 멤버들이 다시 대기열로 복귀했습니다.',
-      })
-    } else {
-      return res.status(400).json({
-        message: '파티장이 아니고, 파티원 수가 2명 이하가 아니므로 해체되지 않습니다.',
+        message: '파티가 해체되었으며, 남은 인원들은 pending 상태로 복귀되었습니다.',
       })
     }
+
+    // ✅ 일반 파티원이 나가는 경우
+    const leavingMember = await PartyMember.findOne({
+      party_id: partyId,
+      member_join_request_id: leavingJoinRequestId,
+    })
+
+    if (!leavingMember) {
+      return res.status(400).json({
+        message: '해당 사용자는 파티장도 아니고 파티원도 아닙니다.',
+      })
+    }
+
+    await leavingMember.deleteOne()
+    await JoinRequest.findByIdAndDelete(leavingJoinRequestId)
+
+    return res.json({
+      message: '파티원이 정상적으로 탈퇴하였습니다.',
+    })
   } catch (err) {
     console.error(err)
     return res.status(500).json({ message: '서버 오류' })
