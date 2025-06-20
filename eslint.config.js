@@ -29,6 +29,13 @@ export default [
     rules: {
       ...js.configs.recommended.rules,
       'prettier/prettier': 'error',
+      'import/extensions': [
+        'error',
+        'always',
+        {
+          js: 'always',
+        },
+      ],
     },
   },
 ]

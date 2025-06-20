@@ -1,15 +1,13 @@
-//express 불러오기
 import express from 'express'
+import cors from 'cors'
+import dotenv from 'dotenv'
+import chatRouter from './routes/chat.js'
 
 //express 사용
 const app = express()
 
 //port 번호 설정
 const port = 3000
-
-import cors from 'cors'
-import dotenv from 'dotenv'
-import chatRouter from './routes/chat.js'
 
 dotenv.config()
 
