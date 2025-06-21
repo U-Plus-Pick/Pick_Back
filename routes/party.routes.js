@@ -1,3 +1,4 @@
+// routes/party.routes.js
 import express from 'express'
 import JoinRequest from '../models/joinRequest.model.js'
 import Party from '../models/party.model.js'
@@ -20,13 +21,11 @@ router.get('/my-party', isLoggedIn, async (req, res) => {
   try {
     const userId = req.session.user._id
 
-    // 1. user_id로 매칭된 JoinRequest 찾기
     const userJoinRequest = await JoinRequest.findOne({ user_id: userId, join_status: 'matched' })
     if (!userJoinRequest) {
       return res.status(404).json({ message: '속해있는 파티가 없습니다.' })
     }
 
-    // 2. 파티장인지 확인
     let party = await Party.findOne({ leader_join_request_id: userJoinRequest._id })
     if (!party) {
       const partyMember = await PartyMember.findOne({ member_join_request_id: userJoinRequest._id })
@@ -43,7 +42,6 @@ router.get('/my-party', isLoggedIn, async (req, res) => {
       return res.status(400).json({ message: '이미 해체된 파티입니다.' })
     }
 
-    // 3. 파티장 정보 가져오기 (JoinRequest -> User)
     const leaderJoinRequest = await JoinRequest.findById(party.leader_join_request_id).populate(
       'user_id',
       'name email'
@@ -52,13 +50,11 @@ router.get('/my-party', isLoggedIn, async (req, res) => {
       return res.status(404).json({ message: '파티장 정보를 찾을 수 없습니다.' })
     }
 
-    // 4. 파티원들 정보 가져오기
     const members = await PartyMember.find({ party_id: party._id }).populate({
       path: 'member_join_request_id',
       populate: { path: 'user_id', select: 'name email' },
     })
 
-    // 5. 응답 데이터 구성
     return res.json({
       partyId: party._id,
       leader: {
@@ -79,7 +75,7 @@ router.get('/my-party', isLoggedIn, async (req, res) => {
   }
 })
 
-// 매칭 API - FIFO 방식 leader 1 + member 4 자동 매칭 후 상태 변경
+// 매칭 API - FIFO 방식
 router.post('/match', async (req, res) => {
   try {
     const leader = await JoinRequest.findOne({ role: 'leader', join_status: 'pending' }).sort({
@@ -116,23 +112,17 @@ router.post('/match', async (req, res) => {
   }
 })
 
-// 모든 파티 정보 조회 API
+// 모든 파티 조회
 router.get('/all', async (req, res) => {
   try {
     const parties = await Party.find().populate({
       path: 'leader_join_request_id',
-      populate: {
-        path: 'user_id',
-        select: 'name email',
-      },
+      populate: { path: 'user_id', select: 'name email' },
     })
 
     const partyMembers = await PartyMember.find().populate({
       path: 'member_join_request_id',
-      populate: {
-        path: 'user_id',
-        select: 'name email',
-      },
+      populate: { path: 'user_id', select: 'name email' },
     })
 
     res.json({ parties, partyMembers })
@@ -142,7 +132,7 @@ router.get('/all', async (req, res) => {
   }
 })
 
-// 파티 나가기 API
+// 파티 나가기
 router.post('/leave', async (req, res) => {
   try {
     const { partyId, leavingJoinRequestId } = req.body
@@ -160,32 +150,25 @@ router.post('/leave', async (req, res) => {
 
     const members = await PartyMember.find({ party_id: partyId })
 
-    // 남은 인원 수 계산 (나가려는 사람 제외)
     const totalMembersAfterLeave =
       (isLeaderLeaving ? 0 : 1) +
       members.filter(m => m.member_join_request_id.toString() !== leavingId).length
 
-    // 해체 조건: 파티장이 나가거나, 파티장 포함 인원이 3명 이하일 경우
     if (isLeaderLeaving || totalMembersAfterLeave <= 3) {
       party.disbanded_at = new Date()
       await party.save()
 
-      // 남아 있는 사람들 (떠나는 사람 제외)
       const remainingJoinRequestIds = [
         leaderJoinRequestId,
         ...members.map(m => m.member_join_request_id.toString()),
       ].filter(id => id !== leavingId)
 
-      // 남은 인원들을 대기열로 복귀시킴
       await JoinRequest.updateMany(
         { _id: { $in: remainingJoinRequestIds } },
         { $set: { join_status: 'pending', priority: 1 } }
       )
 
-      // 모든 파티 멤버 삭제
       await PartyMember.deleteMany({ party_id: partyId })
-
-      // 나가는 사람의 요청은 삭제
       await JoinRequest.findByIdAndDelete(leavingJoinRequestId)
 
       return res.json({
@@ -193,7 +176,6 @@ router.post('/leave', async (req, res) => {
       })
     }
 
-    // 일반 파티원이 나가는 경우
     const leavingMember = await PartyMember.findOne({
       party_id: partyId,
       member_join_request_id: leavingJoinRequestId,
@@ -217,7 +199,7 @@ router.post('/leave', async (req, res) => {
   }
 })
 
-// 파티 명단 조회 API - user_name 으로 조회
+// 이름으로 파티 조회
 router.get('/party-members-by-name', async (req, res) => {
   try {
     const userName = req.query.user_name || req.body.user_name
@@ -225,22 +207,18 @@ router.get('/party-members-by-name', async (req, res) => {
       return res.status(400).json({ message: 'user_name이 필요합니다.' })
     }
 
-    // 1. 이름으로 User 찾기
     const user = await User.findOne({ name: userName })
     if (!user) {
       return res.status(404).json({ message: '해당 이름의 사용자를 찾을 수 없습니다.' })
     }
 
-    // 2. User._id로 JoinRequest 찾기 (matched 상태)
     const userJoinRequest = await JoinRequest.findOne({ user_id: user._id, join_status: 'matched' })
     if (!userJoinRequest) {
       return res.status(404).json({ message: '해당 사용자가 속한 파티가 없습니다.' })
     }
 
-    // 3. 파티 찾기 (파티장인지 확인)
     let party = await Party.findOne({ leader_join_request_id: userJoinRequest._id })
     if (!party) {
-      // 파티장이 아니면 PartyMember에서 찾기
       const partyMember = await PartyMember.findOne({ member_join_request_id: userJoinRequest._id })
       if (!partyMember) {
         return res.status(404).json({ message: '해당 사용자가 속한 파티가 없습니다.' })
@@ -255,7 +233,6 @@ router.get('/party-members-by-name', async (req, res) => {
       return res.status(400).json({ message: '이미 해체된 파티입니다.' })
     }
 
-    // 4. 파티장 정보 조회
     const leaderJoinRequest = await JoinRequest.findById(party.leader_join_request_id).populate(
       'user_id',
       'name'
@@ -264,13 +241,11 @@ router.get('/party-members-by-name', async (req, res) => {
       return res.status(404).json({ message: '파티장 정보를 찾을 수 없습니다.' })
     }
 
-    // 5. 파티원들 정보 조회
     const members = await PartyMember.find({ party_id: party._id }).populate({
       path: 'member_join_request_id',
       populate: { path: 'user_id', select: 'name' },
     })
 
-    // 6. 응답 구성
     const leaderName = leaderJoinRequest.user_id?.name || '이름 없음'
     const memberNames = members.map(m => m.member_join_request_id.user_id?.name || '이름 없음')
 
@@ -285,6 +260,7 @@ router.get('/party-members-by-name', async (req, res) => {
   }
 })
 
+// 해체되지 않은 모든 파티 조회
 router.get('/active', async (req, res) => {
   try {
     const parties = await Party.find({ disbanded_at: null }).populate({
@@ -293,7 +269,7 @@ router.get('/active', async (req, res) => {
         path: 'user_id',
         populate: {
           path: 'plan_id',
-          select: 'name price', // 요금제 이름, 가격 등
+          select: 'name price',
         },
         select: 'name email plan_id',
       },

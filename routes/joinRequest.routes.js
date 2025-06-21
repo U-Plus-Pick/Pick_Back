@@ -1,5 +1,6 @@
 import express from 'express'
 import JoinRequest from '../models/joinRequest.model.js'
+
 import User from '../models/User.js' // 경로 맞게 조정하세요
 
 const router = express.Router()

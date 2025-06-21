@@ -17,8 +17,8 @@ export default [
         ...globals.node,
       },
       parserOptions: {
-        ecmaVersion: 'latest',
         sourceType: 'module',
+        ecmaVersion: 'latest',
       },
     },
 
@@ -29,6 +29,13 @@ export default [
     rules: {
       ...js.configs.recommended.rules,
       'prettier/prettier': 'error',
+      'import/extensions': [
+        'error',
+        'always',
+        {
+          js: 'always',
+        },
+      ],
     },
   },
 ]

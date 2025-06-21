@@ -1,8 +1,10 @@
 import mongoose from 'mongoose'
 
-const partySchema = new mongoose.Schema({
+const { Schema, model } = mongoose
+
+const partySchema = new Schema({
   leader_join_request_id: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     ref: 'JoinRequest',
     required: true,
   },
@@ -10,6 +12,6 @@ const partySchema = new mongoose.Schema({
   disbanded_at: { type: Date },
 })
 
-const Party = mongoose.model('Party', partySchema)
+const Party = model('Party', partySchema)
 
 export default Party
