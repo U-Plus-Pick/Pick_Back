@@ -8,7 +8,7 @@ import cors from 'cors'
 import connectDB from './config/db.js'
 
 import chatRouter from './routes/chat.js'
-import authRoutes from './routes/auth.js'
+import usersRoutes from './routes/users.js'
 import joinRequestRoutes from './routes/joinRequest.routes.js'
 import partyRoutes from './routes/party.routes.js'
 
@@ -46,7 +46,7 @@ app.use(
 
 // 라우터 등록
 app.use('/api/gpt', chatRouter)
-app.use('/api/auth', authRoutes)
+app.use('/api/users', usersRoutes)
 app.use('/api/join-requests', joinRequestRoutes)
 app.use('/api/party', partyRoutes)
 
