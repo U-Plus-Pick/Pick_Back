@@ -1,7 +1,9 @@
 import express from 'express'
-import mongoose from 'mongoose'
+import session from 'express-session'
 import dotenv from 'dotenv'
+import MongoStore from 'connect-mongo'
 
+import connectDB from './config/db.js'
 import authRoutes from './routes/auth.js'
 import joinRequestRoutes from './routes/joinRequest.routes.js'
 import partyRoutes from './routes/party.routes.js'
@@ -11,8 +13,22 @@ dotenv.config()
 const app = express()
 const port = process.env.PORT || 5000
 
-// JSON 파싱
+// MongoDB 연결
+connectDB()
+
+// 미들웨어
 app.use(express.json())
+
+// 세션 설정
+app.use(
+  session({
+    secret: 'mySecretKey',
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
+    cookie: { maxAge: 1000 * 60 * 60 }, // 1시간 유지
+  })
+)
 
 // 라우터 연결
 app.use('/api/auth', authRoutes)
@@ -24,18 +40,7 @@ app.get('/', (req, res) => {
   res.send('✅ 서버 정상 실행 중')
 })
 
-// MongoDB 연결
-mongoose
-  .connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => {
-    console.log('✅ MongoDB 연결 성공')
-    app.listen(port, () => {
-      console.log(`🚀 서버 실행 중: http://localhost:${port}`)
-    })
-  })
-  .catch(err => {
-    console.error('❌ MongoDB 연결 실패', err)
-  })
+// 서버 실행
+app.listen(port, () => {
+  console.log(`🚀 서버 실행 중: http://localhost:${port}`)
+})

@@ -1,4 +1,4 @@
-const mongoose = require('mongoose')
+import mongoose from 'mongoose'
 
 const partySchema = new mongoose.Schema({
   leader_join_request_id: {
@@ -10,4 +10,6 @@ const partySchema = new mongoose.Schema({
   disbanded_at: { type: Date },
 })
 
-module.exports = mongoose.model('Party', partySchema)
+const Party = mongoose.model('Party', partySchema)
+
+export default Party

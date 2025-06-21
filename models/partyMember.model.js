@@ -1,4 +1,4 @@
-const mongoose = require('mongoose')
+import mongoose from 'mongoose'
 
 const partyMemberSchema = new mongoose.Schema({
   party_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Party', required: true },
@@ -9,4 +9,6 @@ const partyMemberSchema = new mongoose.Schema({
   },
 })
 
-module.exports = mongoose.model('PartyMember', partyMemberSchema)
+const PartyMember = mongoose.model('PartyMember', partyMemberSchema)
+
+export default PartyMember

@@ -1,10 +1,85 @@
-const express = require('express')
-const router = express.Router()
-const JoinRequest = require('../models/joinRequest.model')
-const Party = require('../models/party.model')
-const PartyMember = require('../models/partyMember.model')
+import express from 'express'
+import JoinRequest from '../models/joinRequest.model.js'
+import Party from '../models/party.model.js'
+import PartyMember from '../models/partyMember.model.js'
+import User from '../models/User.js'
 
-// 매칭 API
+const router = express.Router()
+
+// 로그인 상태 확인 미들웨어 (세션 기준)
+function isLoggedIn(req, res, next) {
+  if (req.session && req.session.user && req.session.user._id) {
+    next()
+  } else {
+    res.status(401).json({ message: '로그인이 필요합니다.' })
+  }
+}
+
+// 로그인된 사용자 파티 정보 조회
+router.get('/my-party', isLoggedIn, async (req, res) => {
+  try {
+    const userId = req.session.user._id
+
+    // 1. user_id로 매칭된 JoinRequest 찾기
+    const userJoinRequest = await JoinRequest.findOne({ user_id: userId, join_status: 'matched' })
+    if (!userJoinRequest) {
+      return res.status(404).json({ message: '속해있는 파티가 없습니다.' })
+    }
+
+    // 2. 파티장인지 확인
+    let party = await Party.findOne({ leader_join_request_id: userJoinRequest._id })
+    if (!party) {
+      const partyMember = await PartyMember.findOne({ member_join_request_id: userJoinRequest._id })
+      if (!partyMember) {
+        return res.status(404).json({ message: '속해있는 파티가 없습니다.' })
+      }
+      party = await Party.findById(partyMember.party_id)
+      if (!party) {
+        return res.status(404).json({ message: '속해있는 파티가 없습니다.' })
+      }
+    }
+
+    if (party.disbanded_at) {
+      return res.status(400).json({ message: '이미 해체된 파티입니다.' })
+    }
+
+    // 3. 파티장 정보 가져오기 (JoinRequest -> User)
+    const leaderJoinRequest = await JoinRequest.findById(party.leader_join_request_id).populate(
+      'user_id',
+      'name email'
+    )
+    if (!leaderJoinRequest) {
+      return res.status(404).json({ message: '파티장 정보를 찾을 수 없습니다.' })
+    }
+
+    // 4. 파티원들 정보 가져오기
+    const members = await PartyMember.find({ party_id: party._id }).populate({
+      path: 'member_join_request_id',
+      populate: { path: 'user_id', select: 'name email' },
+    })
+
+    // 5. 응답 데이터 구성
+    return res.json({
+      partyId: party._id,
+      leader: {
+        id: leaderJoinRequest.user_id._id,
+        name: leaderJoinRequest.user_id.name,
+        email: leaderJoinRequest.user_id.email,
+      },
+      members: members.map(m => ({
+        id: m.member_join_request_id.user_id._id,
+        name: m.member_join_request_id.user_id.name,
+        email: m.member_join_request_id.user_id.email,
+      })),
+      created_at: party.created_at,
+    })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: '서버 오류' })
+  }
+})
+
+// 매칭 API - FIFO 방식 leader 1 + member 4 자동 매칭 후 상태 변경
 router.post('/match', async (req, res) => {
   try {
     const leader = await JoinRequest.findOne({ role: 'leader', join_status: 'pending' }).sort({
@@ -68,7 +143,6 @@ router.get('/all', async (req, res) => {
 })
 
 // 파티 나가기 API
-// 파티 나가기 API
 router.post('/leave', async (req, res) => {
   try {
     const { partyId, leavingJoinRequestId } = req.body
@@ -86,17 +160,17 @@ router.post('/leave', async (req, res) => {
 
     const members = await PartyMember.find({ party_id: partyId })
 
-    // 👉 남은 인원 수 계산 (나가려는 사람 제외)
+    // 남은 인원 수 계산 (나가려는 사람 제외)
     const totalMembersAfterLeave =
       (isLeaderLeaving ? 0 : 1) +
       members.filter(m => m.member_join_request_id.toString() !== leavingId).length
 
-    // ✅ 해체 조건: 파티장이 나가거나, 파티장 포함 인원이 2명 이하일 경우
-    if (isLeaderLeaving || totalMembersAfterLeave <= 2) {
+    // 해체 조건: 파티장이 나가거나, 파티장 포함 인원이 3명 이하일 경우
+    if (isLeaderLeaving || totalMembersAfterLeave <= 3) {
       party.disbanded_at = new Date()
       await party.save()
 
-      // 🟡 남아 있는 사람들 (떠나는 사람 제외)
+      // 남아 있는 사람들 (떠나는 사람 제외)
       const remainingJoinRequestIds = [
         leaderJoinRequestId,
         ...members.map(m => m.member_join_request_id.toString()),
@@ -119,7 +193,7 @@ router.post('/leave', async (req, res) => {
       })
     }
 
-    // ✅ 일반 파티원이 나가는 경우
+    // 일반 파티원이 나가는 경우
     const leavingMember = await PartyMember.findOne({
       party_id: partyId,
       member_join_request_id: leavingJoinRequestId,
@@ -143,4 +217,140 @@ router.post('/leave', async (req, res) => {
   }
 })
 
-module.exports = router
+// 파티 명단 조회 API - user_name 으로 조회
+router.get('/party-members-by-name', async (req, res) => {
+  try {
+    const userName = req.query.user_name || req.body.user_name
+    if (!userName) {
+      return res.status(400).json({ message: 'user_name이 필요합니다.' })
+    }
+
+    // 1. 이름으로 User 찾기
+    const user = await User.findOne({ name: userName })
+    if (!user) {
+      return res.status(404).json({ message: '해당 이름의 사용자를 찾을 수 없습니다.' })
+    }
+
+    // 2. User._id로 JoinRequest 찾기 (matched 상태)
+    const userJoinRequest = await JoinRequest.findOne({ user_id: user._id, join_status: 'matched' })
+    if (!userJoinRequest) {
+      return res.status(404).json({ message: '해당 사용자가 속한 파티가 없습니다.' })
+    }
+
+    // 3. 파티 찾기 (파티장인지 확인)
+    let party = await Party.findOne({ leader_join_request_id: userJoinRequest._id })
+    if (!party) {
+      // 파티장이 아니면 PartyMember에서 찾기
+      const partyMember = await PartyMember.findOne({ member_join_request_id: userJoinRequest._id })
+      if (!partyMember) {
+        return res.status(404).json({ message: '해당 사용자가 속한 파티가 없습니다.' })
+      }
+      party = await Party.findById(partyMember.party_id)
+      if (!party) {
+        return res.status(404).json({ message: '해당 사용자가 속한 파티가 없습니다.' })
+      }
+    }
+
+    if (party.disbanded_at) {
+      return res.status(400).json({ message: '이미 해체된 파티입니다.' })
+    }
+
+    // 4. 파티장 정보 조회
+    const leaderJoinRequest = await JoinRequest.findById(party.leader_join_request_id).populate(
+      'user_id',
+      'name'
+    )
+    if (!leaderJoinRequest || !leaderJoinRequest.user_id) {
+      return res.status(404).json({ message: '파티장 정보를 찾을 수 없습니다.' })
+    }
+
+    // 5. 파티원들 정보 조회
+    const members = await PartyMember.find({ party_id: party._id }).populate({
+      path: 'member_join_request_id',
+      populate: { path: 'user_id', select: 'name' },
+    })
+
+    // 6. 응답 구성
+    const leaderName = leaderJoinRequest.user_id?.name || '이름 없음'
+    const memberNames = members.map(m => m.member_join_request_id.user_id?.name || '이름 없음')
+
+    return res.json({
+      partyId: party._id,
+      leader: leaderName,
+      members: memberNames,
+    })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: '서버 오류' })
+  }
+})
+
+router.get('/active', async (req, res) => {
+  try {
+    const parties = await Party.find({ disbanded_at: null }).populate({
+      path: 'leader_join_request_id',
+      populate: {
+        path: 'user_id',
+        populate: {
+          path: 'plan_id',
+          select: 'name price', // 요금제 이름, 가격 등
+        },
+        select: 'name email plan_id',
+      },
+    })
+
+    const partyId = parties.map(p => p._id)
+
+    const partyMembers = await PartyMember.find({ party_id: partyId }).populate({
+      path: 'member_join_request_id',
+      populate: {
+        path: 'user_id',
+        populate: {
+          path: 'plan_id',
+          select: 'name price',
+        },
+        select: 'name email plan_id',
+      },
+    })
+
+    const membersByParty = {}
+    for (const member of partyMembers) {
+      const pid = member.party_id.toString()
+      if (!membersByParty[pid]) membersByParty[pid] = []
+      membersByParty[pid].push(member)
+    }
+
+    const result = parties.map(party => {
+      const partyIdStr = party._id.toString()
+      const leaderUser = party.leader_join_request_id?.user_id
+
+      return {
+        created_at: party.created_at,
+        leader: leaderUser
+          ? {
+              name: leaderUser.name,
+              email: leaderUser.email,
+              plan: leaderUser.plan_id,
+            }
+          : null,
+        members: (membersByParty[partyIdStr] || []).map(m => {
+          const user = m.member_join_request_id?.user_id
+          return user
+            ? {
+                name: user.name,
+                email: user.email,
+                plan: user.plan_id,
+              }
+            : null
+        }),
+      }
+    })
+
+    res.json({ activeParties: result })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: '파티 정보 조회 실패', error: err.message })
+  }
+})
+
+export default router
