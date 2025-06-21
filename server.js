@@ -11,6 +11,7 @@ import chatRouter from './routes/chat.js'
 import usersRoutes from './routes/users.js'
 import joinRequestRoutes from './routes/joinRequest.routes.js'
 import partyRoutes from './routes/party.routes.js'
+import allPlanRoutes from './routes/allPlan.routes.js'
 
 // 환경변수 로딩
 dotenv.config()
@@ -49,6 +50,7 @@ app.use('/api/gpt', chatRouter)
 app.use('/api/users', usersRoutes)
 app.use('/api/join-requests', joinRequestRoutes)
 app.use('/api/party', partyRoutes)
+app.use('/api/plans', allPlanRoutes) //전체 요금제 조회
 
 // 기본 라우트
 app.get('/', (req, res) => {
@@ -57,5 +59,5 @@ app.get('/', (req, res) => {
 
 // 서버 실행
 app.listen(port, () => {
-  console.log(`🚀 서버 실행 중: http://localhost:${port}`)
+  console.log(`서버 실행 성공: http://localhost:${port}`)
 })
