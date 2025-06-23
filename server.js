@@ -4,7 +4,7 @@ import dotenv from 'dotenv'
 import MongoStore from 'connect-mongo'
 import mongoose from 'mongoose'
 import cors from 'cors'
-
+import paymentsRouter from './routes/payments.routes.js'
 import connectDB from './config/db.js'
 
 import chatRouter from './routes/chat.js'
@@ -54,6 +54,7 @@ app.use('/api/users', usersRoutes)
 app.use('/api/join-requests', joinRequestRoutes)
 app.use('/api/party', partyRoutes)
 app.use('/api/plans', allPlanRoutes) //전체 요금제 조회
+app.use('/api/payments', paymentsRouter)
 
 // 파티 신청 API 직접 추가
 app.post('/api/party-apply', async (req, res) => {
