@@ -105,12 +105,7 @@ router.get('/me', authMiddleware, async (req, res) => {
       user_name: user.name,
       user_phone: user.phone,
       user_birth: user.birthdate,
-      plans: user.plan_id
-        ? {
-            plan_name: user.plan_id.plan_name,
-            monthly_fee: user.plan_id.plan_monthly_fee,
-          }
-        : null,
+      plans: user.plan_id?.plan_name || null,
       apply_division,
     })
   } catch (err) {
