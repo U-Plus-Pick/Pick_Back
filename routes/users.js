@@ -30,12 +30,6 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    // Plan 컬렉션에서 plan 필드로 요금제 조회
-    const matchedPlan = await Plan.findOne({ plan: plan })
-    if (!matchedPlan) {
-      return res.status(400).json({ message: '존재하지 않는 요금제입니다.' })
-    }
-
     const user = new User({
       name,
       birthdate,
