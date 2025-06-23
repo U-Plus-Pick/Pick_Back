@@ -7,13 +7,15 @@ const router = express.Router()
 
 router.post('/', async (req, res) => {
   try {
-    const { user_id, role, terms_agreed } = req.body
+    const { user_email, role, terms_agreed } = req.body
 
     // 1) 사용자 정보 조회 + 요금제 populate
-    const user = await User.findById(user_id).populate('plan_id')
+    const user = await User.findOne({ email: user_email }).populate('plan_id')
     if (!user) {
       return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' })
     }
+
+    const user_id = user._id
 
     // 2) 허용된 요금제 리스트
     const allowedPlans = [
@@ -21,7 +23,7 @@ router.post('/', async (req, res) => {
       '5G 프리미어 슈퍼',
       '5G 프리미어 플러스',
       '5G 프리미어 레귤러',
-      '5G 프리미어 에센셜', // ✅ '에셀셜' → '에센셜' 오타 수정
+      '5G 프리미어 에센셜',
       '5G 스마트',
       '5G 프리미엄',
       '5G 스페셜',
