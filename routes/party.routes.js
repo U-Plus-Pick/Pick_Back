@@ -412,5 +412,36 @@ router.get('/infor', authMiddleware, async (req, res) => {
     res.status(500).json({ message: '서버 오류', error: err.message })
   }
 })
+// ✅ 결합 신청 구분 조회 API
+router.get('/status', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id
+
+    // 유저 정보 가져오기 (이메일용)
+    const user = await User.findById(userId).select('email')
+    if (!user) {
+      return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' })
+    }
+
+    // JoinRequest 조회
+    const joinRequest = await JoinRequest.findOne({
+      user_id: userId,
+      join_status: { $in: ['pending', 'matched'] },
+    })
+
+    let status = 'none'
+    if (joinRequest) {
+      status = joinRequest.role === 'leader' ? 'leader' : 'member'
+    }
+
+    return res.json({
+      status,
+      user_email: user.email,
+    })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: '서버 오류' })
+  }
+})
 
 export default router
