@@ -4,6 +4,8 @@ import JoinRequest from '../models/joinRequest.model.js'
 import Party from '../models/party.model.js'
 import PartyMember from '../models/partyMember.model.js'
 import User from '../models/User.js'
+import authMiddleware from '../middleware/authMiddleware.js'
+import Plan from '../models/Plan.js'
 
 const router = express.Router()
 
@@ -329,4 +331,102 @@ router.get('/active', async (req, res) => {
   }
 })
 
+// ✅ 파티 정보 조회 (GET /api/party/infor)
+router.get('/infor', authMiddleware, async (req, res) => {
+  try {
+    // 1. 로그인한 사용자 joinRequest (matched 상태) 조회
+    const userJoinRequest = await JoinRequest.findOne({
+      user_id: req.user.id,
+      join_status: 'matched',
+    })
+    if (!userJoinRequest) {
+      return res.status(404).json({ message: '속해있는 파티가 없습니다.' })
+    }
+
+    // 2. 파티 조회 (리더인지 멤버인지에 따라)
+    let party = await Party.findOne({ leader_join_request_id: userJoinRequest._id })
+    if (!party) {
+      const partyMember = await PartyMember.findOne({
+        member_join_request_id: userJoinRequest._id,
+      })
+      if (!partyMember) {
+        return res.status(404).json({ message: '속해있는 파티가 없습니다.' })
+      }
+      party = await Party.findById(partyMember.party_id)
+      if (!party) {
+        return res.status(404).json({ message: '속해있는 파티가 없습니다.' })
+      }
+    }
+
+    if (party.disbanded_at) {
+      return res.status(400).json({ message: '이미 해체된 파티입니다.' })
+    }
+
+    // 3. 파티장 JoinRequest 조회
+    const leaderJoin = await JoinRequest.findById(party.leader_join_request_id)
+    if (!leaderJoin) {
+      return res.status(404).json({ message: '파티장 JoinRequest를 찾을 수 없습니다.' })
+    }
+
+    // 4. 파티장 User 조회
+    const leaderUser = await User.findById(leaderJoin.user_id)
+    if (!leaderUser) {
+      return res.status(404).json({ message: '파티장 유저를 찾을 수 없습니다.' })
+    }
+    if (!leaderUser.plan_id) {
+      return res.status(404).json({ message: '파티장 요금제가 없습니다.' })
+    }
+
+    // 5. 파티장 Plan 조회
+    const leaderPlan = await Plan.findById(leaderUser.plan_id)
+    if (!leaderPlan) {
+      return res.status(404).json({ message: '파티장 요금제 정보를 찾을 수 없습니다.' })
+    }
+
+    const leader_infor = {
+      leader_email: leaderUser.email,
+      leader_name: leaderUser.name,
+      plan_name: leaderPlan.plan_name,
+      plan_fee: leaderPlan.price,
+    }
+
+    // 6. 파티 멤버들 조회 + populate user & plan
+    const members = await PartyMember.find({ party_id: party._id }).populate({
+      path: 'member_join_request_id',
+      populate: {
+        path: 'user_id',
+        populate: { path: 'plan_id' },
+      },
+    })
+    console.log('====== 멤버 확인 시작 ======')
+    members.forEach((m, i) => {
+      console.log(`멤버 ${i + 1}`)
+      console.log('JoinRequest ID:', m.member_join_request_id?._id)
+      console.log('User:', m.member_join_request_id?.user_id)
+      console.log('Plan:', m.member_join_request_id?.user_id?.plan_id)
+    })
+    const crew_infor = members
+      .map(m => {
+        const user = m.member_join_request_id?.user_id
+        const plan = user?.plan_id
+        if (!user || !plan) return null
+        return {
+          member_email: user.email,
+          member_name: user.name,
+          plan_name: plan.plan_name,
+          plan_monthly_fee: plan.price,
+        }
+      })
+      .filter(Boolean)
+
+    // ✅ 응답 반환
+    res.json({
+      leader_infor,
+      crew_infor,
+    })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: '서버 오류' })
+  }
+})
 export default router
