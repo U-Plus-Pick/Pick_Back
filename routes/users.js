@@ -30,8 +30,8 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    // Plan 컬렉션에서 plan_name 으로 요금제 조회
-    const matchedPlan = await Plan.findOne({ plan_name: plan })
+    // Plan 컬렉션에서 plan 필드로 요금제 조회
+    const matchedPlan = await Plan.findOne({ plan: plan })
     if (!matchedPlan) {
       return res.status(400).json({ message: '존재하지 않는 요금제입니다.' })
     }
@@ -79,21 +79,23 @@ router.get('/me', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
       .select('-password')
-      .populate('plan_id', 'plan_name price') // plan_name과 price 필드만 populate
+      .populate('plan_id', 'plan_name plan_monthly_fee') // plan_name과 price 필드만 populate
       .lean()
 
     if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' })
 
+    // birthdate를 YYYY-MM-DD 포맷으로 변환
     if (user.birthdate) {
       user.birthdate = user.birthdate.toISOString().split('T')[0]
     }
 
+    // 내 JoinRequest 상태 조회
     const joinRequest = await JoinRequest.findOne({
       user_id: req.user.id,
       join_status: { $in: ['pending', 'matched'] },
     }).lean()
 
-    let apply_division = 'non'
+    let apply_division = 'none'
     if (joinRequest) {
       apply_division = joinRequest.role === 'leader' ? 'leader' : 'member'
     }
@@ -106,7 +108,7 @@ router.get('/me', authMiddleware, async (req, res) => {
       plans: user.plan_id
         ? {
             plan_name: user.plan_id.plan_name,
-            price: user.plan_id.price,
+            monthly_fee: user.plan_id.plan_monthly_fee,
           }
         : null,
       apply_division,
