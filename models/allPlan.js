@@ -14,12 +14,16 @@ export default class Plan {
   // 요금제 정보를 표시용으로 포맷팅
   toDisplayFormat() {
     return {
-      name: this.plan_name || '이름 없음',
-      monthly_fee: `${this.plan_monthly_fee.toLocaleString()}원`,
-      data: this.plan_data_count >= 9999 ? '무제한' : `${this.plan_data_count}GB`,
-      voice: this.plan_voice_minutes >= 9999 ? '무제한' : `${this.plan_voice_minutes}분`,
-      sms: this.plan_sms_count >= 9999 ? '무제한' : `${this.plan_sms_count || 0}건`,
-      benefit: this.plan_premium_benefit || '기본 혜택 포함',
+      plan_name: this.plan_name || '이름 없음',
+      plan_monthly_fee: `${this.plan_monthly_fee.toLocaleString()}원`,
+      plan_data_count: this.plan_data_count >= 9999 ? '무제한' : `${this.plan_data_count}GB`,
+      plan_voice_minutes:
+        this.plan_voice_minutes >= 9999 ? '무제한' : `${this.plan_voice_minutes}분`,
+      plan_sms_count: this.plan_sms_count >= 9999 ? '무제한' : `${this.plan_sms_count || 0}건`,
+      plan_premium_benefit: this.plan_premium_benefit || '기본 혜택 포함',
+      plan_media_benefit: this.plan_media_benefit || '',
+      plan_basic_benefit: this.plan_basic_benefit || '',
+      plan_smart_benefit: this.plan_smart_benefit || '',
     }
   }
 }
