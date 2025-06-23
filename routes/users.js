@@ -30,8 +30,8 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    // Plan 컬렉션에서 plan_name 으로 요금제 조회
-    const matchedPlan = await Plan.findOne({ plan_name: plan })
+    // Plan 컬렉션에서 plan 필드로 요금제 조회
+    const matchedPlan = await Plan.findOne({ plan: plan })
     if (!matchedPlan) {
       return res.status(400).json({ message: '존재하지 않는 요금제입니다.' })
     }
@@ -79,21 +79,23 @@ router.get('/me', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
       .select('-password')
-      .populate('plan_id', 'plan_name price') // plan_name과 price 필드만 populate
+      .populate('plan_id', 'plan_name plan_monthly_fee') // plan_name과 price 필드만 populate
       .lean()
 
     if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' })
 
+    // birthdate를 YYYY-MM-DD 포맷으로 변환
     if (user.birthdate) {
       user.birthdate = user.birthdate.toISOString().split('T')[0]
     }
 
+    // 내 JoinRequest 상태 조회
     const joinRequest = await JoinRequest.findOne({
       user_id: req.user.id,
       join_status: { $in: ['pending', 'matched'] },
     }).lean()
 
-    let apply_division = 'non'
+    let apply_division = 'none'
     if (joinRequest) {
       apply_division = joinRequest.role === 'leader' ? 'leader' : 'member'
     }
@@ -103,13 +105,37 @@ router.get('/me', authMiddleware, async (req, res) => {
       user_name: user.name,
       user_phone: user.phone,
       user_birth: user.birthdate,
-      plans: user.plan_id
-        ? {
-            plan_name: user.plan_id.plan_name,
-            price: user.plan_id.price,
-          }
-        : null,
+      plans: user.plan_id?.plan_name || null,
       apply_division,
+    })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: '서버 오류' })
+  }
+})
+
+// 요금제 변경 (plan_name 기준)
+router.patch('/me/plan', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id
+    const { plan_name } = req.body
+
+    if (!plan_name) {
+      return res.status(400).json({ message: 'plan_name은 필수입니다.' })
+    }
+
+    // plan_name으로 요금제 조회
+    const plan = await Plan.findOne({ plan_name })
+    if (!plan) {
+      return res.status(404).json({ message: '해당 요금제를 찾을 수 없습니다.' })
+    }
+
+    // 유저 요금제 변경
+    await User.findByIdAndUpdate(userId, { plan_id: plan._id })
+
+    res.json({
+      message: '요금제 변경 완료',
+      updated_plan: plan.plan_name,
     })
   } catch (err) {
     console.error(err)
