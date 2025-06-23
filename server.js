@@ -14,6 +14,7 @@ import usersRoutes from './routes/users.js'
 import joinRequestRoutes from './routes/joinRequest.routes.js'
 import partyRoutes from './routes/party.routes.js'
 import allPlanRoutes from './routes/allPlan.routes.js'
+import tossPaymentsRoutes from './routes/tossPayments.routes.js'
 
 import User from './models/User.js'
 import JoinRequest from './models/joinRequest.model.js'
@@ -31,7 +32,7 @@ const server = http.createServer(app)
 const io = new Server(server, {
   cors: {
     origin: 'http://localhost:5173',
-    methods: ['GET', 'POST'],
+    methods: ['GET', 'POST', 'PATCH'],
   },
 })
 
@@ -67,49 +68,7 @@ app.use('/api/users', usersRoutes)
 app.use('/api/join-requests', joinRequestRoutes)
 app.use('/api/party', partyRoutes)
 app.use('/api/plans', allPlanRoutes) //전체 요금제 조회
-
-// 파티 신청 API 직접 추가
-app.post('/api/party-apply', async (req, res) => {
-  try {
-    const { user_email, role, name, terms_agreed } = req.body
-
-    if (!user_email || !role || !name || typeof terms_agreed !== 'boolean') {
-      return res.status(400).json({ message: '필수 데이터가 부족합니다.' })
-    }
-
-    // 이메일로 사용자 조회
-    const user = await User.findOne({ email: user_email })
-    if (!user) {
-      return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' })
-    }
-
-    // 중복 신청 검사 (pending 또는 matched 상태인 신청서가 있는지)
-    const existingRequest = await JoinRequest.findOne({
-      user_id: user._id,
-      join_status: { $in: ['pending', 'matched'] },
-    })
-    if (existingRequest) {
-      return res.status(400).json({ message: '이미 파티 신청 중입니다.' })
-    }
-
-    // 신청서 저장
-    const joinRequest = new JoinRequest({
-      user_id: user._id,
-      role,
-      name,
-      terms_agreed,
-      join_status: 'pending',
-      created_at: new Date(),
-    })
-
-    await joinRequest.save()
-
-    res.status(201).json({ message: '파티 신청이 완료되었습니다.' })
-  } catch (error) {
-    console.error(error)
-    res.status(500).json({ message: '서버 오류' })
-  }
-})
+app.use('/api/toss', tossPaymentsRoutes) //toss 결제
 
 // 파티 신청 API 직접 추가
 app.post('/api/party-apply', async (req, res) => {
