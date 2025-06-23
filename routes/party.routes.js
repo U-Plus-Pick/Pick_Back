@@ -4,6 +4,8 @@ import JoinRequest from '../models/joinRequest.model.js'
 import Party from '../models/party.model.js'
 import PartyMember from '../models/partyMember.model.js'
 import User from '../models/User.js'
+import authMiddleware from '../middleware/authMiddleware.js'
+import Plan from '../models/Plan.js'
 
 const router = express.Router()
 
@@ -326,6 +328,88 @@ router.get('/active', async (req, res) => {
   } catch (err) {
     console.error(err)
     res.status(500).json({ message: '파티 정보 조회 실패', error: err.message })
+  }
+})
+
+// 파티 정보 조회 (GET /api/party/infor)
+router.get('/infor', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id
+
+    // 1. 유저의 JoinRequest 중 matched 상태 찾기
+    const myJoin = await JoinRequest.findOne({ user_id: userId, join_status: 'matched' })
+    if (!myJoin) {
+      return res.status(404).json({ message: '속한 파티가 없습니다.' })
+    }
+
+    // 2. 내가 리더인지 확인
+    let party = await Party.findOne({ leader_join_request_id: myJoin._id })
+
+    // 3. 아니라면 PartyMember에서 찾기
+    if (!party) {
+      const myMember = await PartyMember.findOne({ member_join_request_id: myJoin._id })
+      if (!myMember) {
+        return res.status(404).json({ message: '속한 파티가 없습니다.' })
+      }
+      party = await Party.findById(myMember.party_id)
+    }
+
+    if (!party) {
+      return res.status(404).json({ message: '파티를 찾을 수 없습니다.' })
+    }
+
+    // 4. 파티장 정보
+    const leaderJoin = await JoinRequest.findById(party.leader_join_request_id)
+    const leaderUser = await User.findById(leaderJoin.user_id).populate(
+      'plan_id',
+      'plan_name plan_monthly_fee'
+    )
+
+    const leader = {
+      name: leaderUser.name,
+      email: leaderUser.email,
+      plans: leaderUser.plan_id
+        ? {
+            plan_name: leaderUser.plan_id.plan_name,
+            monthly_fee: leaderUser.plan_id.plan_monthly_fee,
+          }
+        : null,
+    }
+
+    // 5. 파티원 정보
+    const members = await PartyMember.find({ party_id: party._id }).populate({
+      path: 'member_join_request_id',
+      populate: {
+        path: 'user_id',
+        populate: {
+          path: 'plan_id',
+          select: 'plan_name plan_monthly_fee',
+        },
+      },
+    })
+
+    const memberInfos = members.map(m => {
+      const user = m.member_join_request_id.user_id
+      return {
+        name: user.name,
+        email: user.email,
+        plans: user.plan_id
+          ? {
+              plan_name: user.plan_id.plan_name,
+              monthly_fee: user.plan_id.plan_monthly_fee,
+            }
+          : null,
+      }
+    })
+
+    res.json({
+      party_id: party._id,
+      leader,
+      members: memberInfos,
+    })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: '서버 오류', error: err.message })
   }
 })
 
