@@ -79,8 +79,9 @@ router.get('/me', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
       .select('-password')
-      .populate('plan_id', 'plan_name')
+      .populate('plan_id', 'plan_name price') // plan_name과 price 필드만 populate
       .lean()
+
     if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' })
 
     if (user.birthdate) {
@@ -102,7 +103,12 @@ router.get('/me', authMiddleware, async (req, res) => {
       user_name: user.name,
       user_phone: user.phone,
       user_birth: user.birthdate,
-      plans: user.plan_id ? user.plan_id.plan_name : null,
+      plans: user.plan_id
+        ? {
+            plan_name: user.plan_id.plan_name,
+            price: user.plan_id.price,
+          }
+        : null,
       apply_division,
     })
   } catch (err) {
