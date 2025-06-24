@@ -6,16 +6,16 @@ import mongoose from 'mongoose'
 
 import session from 'express-session'
 import MongoStore from 'connect-mongo'
-import userRoutes from './routes/users.routes.js'
+import usersRoutes from './routes/users.routes.js'
 import partyRoutes from './routes/party.routes.js'
 import joinRequestRoutes from './routes/joinRequest.routes.js' // ✅
 import dotenv from 'dotenv'
 import allPlanRoutes from './routes/allPlan.routes.js'
-
+import chatRouter from './routes/chat.js'
 import tossPaymentsRoutes from './routes/tossPayments.routes.js'
+import payments from './routes/payments.routes.js'
 
 import User from './models/User.js'
-import JoinRequest from './models/joinRequest.model.js'
 
 // 환경변수 로딩
 dotenv.config()
@@ -34,13 +34,8 @@ const io = new Server(server, {
   },
 })
 
-// MongoDB 연결 (connectDB 함수가 mongoose.connect를 내부적으로 호출한다고 가정)
-connectDB()
-
 import cors from 'cors'
 dotenv.config()
-
-const app = express()
 
 // CORS 설정
 app.use(
@@ -143,10 +138,11 @@ mongoose
   .then(() => console.log('MongoDB 연결 성공'))
   .catch(err => console.error('MongoDB 연결 실패:', err))
 
-app.use('/api/users', userRoutes)
+app.use('/api/users', usersRoutes)
 app.use('/api/party', partyRoutes)
 app.use('/api/plans', allPlanRoutes) //전체 요금제 조회
 app.use('/api/join-requests', joinRequestRoutes)
+app.use('/api/payments', payments)
 app.use((req, res) => {
   res.status(404).send({ message: `Cannot ${req.method} ${req.originalUrl}` })
 })
