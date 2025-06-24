@@ -2,7 +2,7 @@ import express from 'express'
 import jwt from 'jsonwebtoken'
 import User from '../models/User.js'
 import Plan from '../models/Plan.js'
-import PartyApplicant from '../models/PartyApplicant.js'
+import PartyApplicant from '../models/PartyApplicant.model.js'
 import authMiddleware from '../middleware/authMiddleware.js'
 
 const router = express.Router()
@@ -104,13 +104,9 @@ router.get('/me', authMiddleware, async (req, res) => {
     // 파티 신청 상태 조회
     const joinRequest = await PartyApplicant.findOne({
       applicant_email: user.email,
-      party_id: null,
     }).lean()
 
-    let apply_division = 'none'
-    if (joinRequest) {
-      apply_division = joinRequest.apply_division === '파티장' ? 'leader' : 'member'
-    }
+    const apply_division = joinRequest?.apply_division || 'none'
 
     res.send({
       user_email: user.email,
