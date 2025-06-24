@@ -55,12 +55,3 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => console.log(`서버가 포트 ${PORT}에서 실행 중`))
-
-// // 매 10초마다 자동 매칭 시도
-// cron.schedule('*/10 * * * * *', async () => {
-//   try {
-//     await attemptAutoMatch()
-//   } catch (err) {
-//     console.error('[자동매칭 에러]', err)
-//   }
-// })
