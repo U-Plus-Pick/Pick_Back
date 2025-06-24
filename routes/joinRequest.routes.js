@@ -23,8 +23,8 @@ router.post('/', isLoggedIn, async (req, res) => {
 
     const user_id = sessionUser._id
 
-    if (!role === undefined) {
-      return res.status(400).send({ message: 'role는 필수입니다.' })
+    if (role === undefined) {
+      return res.status(400).send({ message: 'role은 필수입니다.' })
     }
 
     const apply_division = role === 'leader' ? '파티장' : '파티원'

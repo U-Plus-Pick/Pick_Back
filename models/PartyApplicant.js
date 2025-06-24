@@ -11,7 +11,6 @@ const partyApplicantSchema = new mongoose.Schema({
   },
   apply_division: { type: String, enum: ['파티장', '파티원'], required: true },
   applicant_priority: { type: Number, default: 0 },
-  terms_agreed: { type: Boolean, required: true },
   document_status: {
     type: String,
     enum: ['미제출', '제출완료', '검토중', '승인', '반려'],
