@@ -1,5 +1,5 @@
 import express from 'express'
-import Payment from '../models/Payment.js'
+import Payment from '../models/Payments.js'
 import authMiddleware from '../middleware/authMiddleware.js'
 
 const router = express.Router()
@@ -12,7 +12,10 @@ router.post('/leader', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: '필수 정보가 누락되었습니다.' })
     }
 
-    const status = '제출' // 항상 제출 상태로 저장
+    const existing = await Payment.findOne({ leader_email })
+    if (existing) {
+      return res.status(409).json({ message: '이미 등록된 이메일입니다.' })
+    }
 
     let payment = await Payment.findOne({ leader_email })
 
@@ -21,7 +24,6 @@ router.post('/leader', authMiddleware, async (req, res) => {
         leader_name,
         leader_bank_name,
         leader_account_number,
-        document_status: status,
       })
     } else {
       payment = new Payment({
@@ -29,7 +31,6 @@ router.post('/leader', authMiddleware, async (req, res) => {
         leader_name,
         leader_bank_name,
         leader_account_number,
-        document_status: status,
       })
     }
 
