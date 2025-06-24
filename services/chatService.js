@@ -4,9 +4,9 @@ import openai from '../config/openai.js'
 import { executeFunction } from '../functions/index.js'
 import { runRecommendPlan } from '../functions/recommendPlan.js'
 
-const bundleDiscountFunctions = [calculateFamilyBundleDiscountSchema]
-
-const membershipFunctions = [
+// 모든 함수들을 통합
+const allFunctions = [
+  calculateFamilyBundleDiscountSchema,
   {
     name: 'get_membership_benefits',
     description: '회원 등급에 따른 멤버십 혜택을 조회합니다',
@@ -66,9 +66,6 @@ const membershipFunctions = [
       required: ['inquiry_type'],
     },
   },
-]
-
-const planFunctions = [
   {
     name: 'recommendPlan',
     description: '사용자의 통신 패턴과 예산에 맞는 최적의 요금제를 추천합니다.',
@@ -213,204 +210,115 @@ function findClosestPlanPrice(planName) {
   return null
 }
 
-export const bundleDiscountChatWithGPT = async (req, res) => {
-  const messages = req.body.messages || []
-  const userMessages = messages.filter(m => m.role === 'user')
-  const input = userMessages.length > 0 ? userMessages[userMessages.length - 1].content.trim() : ''
-
-  const rule = keywordRules.find(rule =>
-    rule.pattern
-      ? rule.pattern.test(input)
-      : rule.keywords?.some(keyword => input.includes(keyword))
-  )
-
-  if (rule) {
-    return res.send(rule.response)
-  }
-
-  const systemMessages = [{ role: 'system', content: SYSTEM_PROMPT }, ...messages]
-
+// 통합된 채팅 함수
+export const chatWithGPT = async (req, res) => {
   try {
+    const messages = req.body.messages || []
+    const userMessage =
+      req.body.message || (messages.length > 0 ? messages[messages.length - 1].content : '')
+
+    if (!userMessage) {
+      return res.status(400).json({
+        success: false,
+        error: '메시지가 필요합니다.',
+      })
+    }
+
+    // 키워드 규칙 체크 (지인 결합 등)
+    const userMessages = messages.filter(m => m.role === 'user')
+    const input =
+      userMessages.length > 0
+        ? userMessages[userMessages.length - 1].content.trim()
+        : userMessage.trim()
+
+    const rule = keywordRules.find(rule =>
+      rule.pattern
+        ? rule.pattern.test(input)
+        : rule.keywords?.some(keyword => input.includes(keyword))
+    )
+
+    if (rule) {
+      return res.json({
+        success: true,
+        response: rule.response,
+      })
+    }
+
+    // 메시지 구성
+    const systemMessages =
+      messages.length > 0
+        ? [{ role: 'system', content: SYSTEM_PROMPT }, ...messages]
+        : [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: userMessage },
+          ]
+
+    // 첫 번째 GPT 호출
     const response = await openai.chat.completions.create({
       model: 'gpt-4.1-mini',
       messages: systemMessages,
-      functions: bundleDiscountFunctions,
-      function_call: 'auto',
-    })
-
-    const choice = response.choices[0]
-    const funcCall = choice.message.function_call
-
-    if (!funcCall) {
-      return res.send(choice.message.content)
-    }
-
-    const args = JSON.parse(funcCall.arguments)
-
-    let prices = []
-    // 가격으로 입력
-    if (args.planNames && Array.isArray(args.planNames)) {
-      prices = args.planNames
-        .map(findClosestPlanPrice) // testPlans 에서 price 가져옴
-        .filter(p => p !== null)
-    }
-    // 요금제 이름으로 입력
-    else if (args.planPrices && Array.isArray(args.planPrices)) {
-      prices = args.planPrices.map(p => parseInt(p, 10)).filter(p => !isNaN(p))
-    }
-
-    if (prices.length === 0) {
-      return res.send(
-        '입력하신 요금제명을 찾을 수 없거나 가격이 없습니다. 정확한 요금제명 또는 가격을 입력해주세요.'
-      )
-    }
-
-    const result = calculateFamilyBundle(prices)
-    const finalResponse = await openai.chat.completions.create({
-      model: 'gpt-4.1-mini',
-      messages: [
-        ...messages,
-        {
-          role: 'function',
-          name: 'calculateFamilyBundleDiscount',
-          content: JSON.stringify(result),
-        },
-      ],
-    })
-    res.send(finalResponse.choices[0].message.content)
-  } catch (err) {
-    console.error('GPT 오류:', err)
-    res.status(500).send('GPT 처리 중 오류 발생')
-  }
-}
-
-export const membershipChatWithGPT = async userMessage => {
-  // eslint-disable-next-line no-useless-catch
-  try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4.1-mini',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userMessage },
-      ],
-      functions: membershipFunctions,
+      functions: allFunctions,
       function_call: 'auto',
     })
 
     const message = response.choices[0].message
 
-    if (message.function_call) {
-      const functionName = message.function_call.name
-      const functionArgs = JSON.parse(message.function_call.arguments)
-      const functionResult = await executeFunction(functionName, functionArgs)
-
-      const secondResponse = await openai.chat.completions.create({
-        model: 'gpt-4.1-mini',
-        messages: [
-          {
-            role: 'system',
-            content:
-              '함수 결과를 바탕으로 친절하고 자세하게 답변해주세요. 혜택이 많은 경우 주요 혜택들을 "-"로 시작하는 목록 형태로 정리해서 보기 좋게 안내해주세요. 목록의 각 항목은 짧고 간결하게 작성하고, 목록 앞뒤에는 한 줄씩 공백을 추가하여 문단을 구분하고, 마지막 안내문은 목록과 별도의 문단으로 작성해주세요.',
-          },
-          { role: 'user', content: userMessage },
-          { role: 'assistant', content: null, function_call: message.function_call },
-          { role: 'function', name: functionName, content: JSON.stringify(functionResult) },
-        ],
+    if (!message.function_call) {
+      return res.json({
+        success: true,
+        response: message.content,
       })
-
-      return secondResponse.choices[0].message.content
     }
 
-    return message.content
-  } catch (error) {
-    throw error
-  }
-}
+    // 함수 호출 처리
+    const functionName = message.function_call.name
+    const functionArgs = JSON.parse(message.function_call.arguments)
+    let functionResult
 
-export async function planChatWithGPT(userMessage) {
-  try {
-    const firstRes = await openai.chat.completions.create({
-      model: 'gpt-4.1-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `당신은 친절하고 전문적인 LG U+ 통합 고객서비스 챗봇입니다. 
+    if (functionName === 'calculateFamilyBundleDiscount') {
+      // 결합 할인 계산
+      let prices = []
 
-## 주요 서비스
+      if (functionArgs.planNames && Array.isArray(functionArgs.planNames)) {
+        prices = functionArgs.planNames.map(findClosestPlanPrice).filter(p => p !== null)
+      } else if (functionArgs.planPrices && Array.isArray(functionArgs.planPrices)) {
+        prices = functionArgs.planPrices.map(p => parseInt(p, 10)).filter(p => !isNaN(p))
+      }
 
-### 1. 요금제 추천 서비스
-사용자의 통신 사용 패턴, 예산, 요구사항을 분석하여 최적의 요금제를 추천합니다.
+      if (prices.length === 0) {
+        return res.json({
+          success: false,
+          error:
+            '입력하신 요금제명을 찾을 수 없거나 가격이 없습니다. 정확한 요금제명 또는 가격을 입력해주세요.',
+        })
+      }
+      functionResult = calculateFamilyBundle(prices)
+    } else if (functionName === 'recommendPlan') {
+      // 요금제 추천
+      try {
+        functionResult = await runRecommendPlan(functionArgs)
+      } catch (error) {
+        console.error('recommendPlan 오류:', error)
+        return res.status(500).json({
+          success: false,
+          error: 'recommendPlan 함수 실행 중 오류가 발생했습니다.',
+        })
+      }
 
-**요금제 추천이 필요한 경우:**
-- 통신 사용 패턴 언급 (데이터, 통화, 문자 사용량)
-- 예산 관련 질문
-- 요금제 추천 요청
-- 유튜브, 동영상 시청 등 특정 사용 패턴 언급
-- 전화 사용량 관련 질문
-
-**함수 호출 규칙:**
-사용자의 맥락을 분석하여 요금제 추천이 필요하다고 판단되면 반드시 recommendPlan 함수를 호출하세요.
-
-**인자값 설정 기준:**
-- plan_monthly_fee: 예산 미언급 시 9999, 저렴한 요금제 원하면 60000 이하
-- plan_data_count: 유튜브/동영상 시청 등 고용량 사용 언급 시에만 최소 30GB 이상
-- plan_voice_minutes: 전화 거의 안 한다면 0, 자주 한다면 100 이상
-
-### 2. 멤버십 서비스
-- **VVIP**: 모바일 요금제 95,000원 이상 또는 연간 누적 통신요금 200만원 이상
-- **VIP**: 모바일 요금제 74,800원 이상 또는 연간 누적 통신요금 100만원 이상  
-- **우수**: 그 외 모든 고객
-
-### 3. 결합 할인 서비스
-- **지인 결합**
-- **가족 결합** (반드시 "참 쉬운 가족 결합"으로 안내)
-
-## 응답 형식
-
-### 요금제 추천 결과
-- 요금제명, 월 요금, 데이터, 통화, SMS, 주요 혜택을 표로 정리
-- 추천 이유를 간결하게 설명
-- 고객의 조건이 불완전할 경우 추가 정보 요청
-
-### 일반 응답
-- 친근하고 전문적인 톤으로 답변
-- 혜택 안내 시 "• "로 시작하는 목록 형태
-- 마지막에 친근한 마무리 문구
-
-## 응답 스타일
-- 자연스럽고 친근한 상담사 톤
-- 사용자의 맥락을 정확히 파악하여 맞춤형 답변
-- 불완전한 정보일 경우 추가 정보 요청
-
-사용자의 질문을 분석하여 적절한 서비스를 제공하세요.`,
-        },
-        { role: 'user', content: userMessage },
-      ],
-      functions: planFunctions,
-      function_call: 'auto',
-    })
-
-    const msg = firstRes.choices[0].message
-
-    if (!msg.function_call) {
-      return msg.content
+      // 기본값 제거
+      if (functionArgs.plan_monthly_fee === 9999) delete functionArgs.plan_monthly_fee
+      if (functionArgs.plan_data_count === 50) delete functionArgs.plan_data_count
+      if (functionArgs.plan_voice_minutes === 0) delete functionArgs.plan_voice_minutes
+    } else {
+      // 멤버십 관련 함수들
+      functionResult = await executeFunction(functionName, functionArgs)
     }
 
-    if (msg.function_call?.name === 'recommendPlan') {
-      const args = JSON.parse(msg.function_call.arguments)
+    // 두 번째 GPT 호출
+    let secondSystemContent = ''
 
-      const result = await runRecommendPlan(args)
-
-      if (args.plan_monthly_fee === 9999) delete args.plan_monthly_fee
-      if (args.plan_data_count === 50) delete args.plan_data_count
-      if (args.plan_voice_minutes === 0) delete args.plan_voice_minutes
-
-      const secondRes = await openai.chat.completions.create({
-        model: 'gpt-4.1-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `요금제 추천 결과를 깔끔하고 이해하기 쉽게 정리해주세요.
+    if (functionName === 'recommendPlan') {
+      secondSystemContent = `요금제 추천 결과를 깔끔하고 이해하기 쉽게 정리해주세요.
 
 ## 응답 형식
 
@@ -429,24 +337,43 @@ export async function planChatWithGPT(userMessage) {
 ### 스타일 가이드
 - 친근하고 전문적인 톤 유지
 - 이모지 적절히 사용하여 가독성 향상
-- 명확하고 간결한 문장 사용`,
-          },
-          { role: 'user', content: userMessage },
-          msg,
-          {
-            role: 'function',
-            name: 'recommendPlan',
-            content: JSON.stringify(result),
-          },
-        ],
-      })
-
-      return secondRes.choices[0].message.content
+- 명확하고 간결한 문장 사용`
+    } else {
+      secondSystemContent =
+        '함수 결과를 바탕으로 친절하고 자세하게 답변해주세요. 혜택이 많은 경우 주요 혜택들을 "•"로 시작하는 목록 형태로 정리해서 보기 좋게 안내해주세요. 목록의 각 항목은 짧고 간결하게 작성하고, 목록 앞뒤에는 한 줄씩 공백을 추가하여 문단을 구분하고, 마지막 안내문은 목록과 별도의 문단으로 작성해주세요.'
     }
 
-    return msg.content
-  } catch (err) {
-    console.error('GPT 오류 :', err)
-    return '요금제를 추천하는 중 오류가 발생했어요. 다시 시도해 주세요.'
+    const finalMessages =
+      messages.length > 0
+        ? [
+            ...messages,
+            {
+              role: 'function',
+              name: functionName,
+              content: JSON.stringify(functionResult),
+            },
+          ]
+        : [
+            { role: 'system', content: secondSystemContent },
+            { role: 'user', content: userMessage },
+            { role: 'assistant', content: null, function_call: message.function_call },
+            { role: 'function', name: functionName, content: JSON.stringify(functionResult) },
+          ]
+
+    const finalResponse = await openai.chat.completions.create({
+      model: 'gpt-4.1-mini',
+      messages: finalMessages,
+    })
+
+    return res.json({
+      success: true,
+      response: finalResponse.choices[0].message.content,
+    })
+  } catch (error) {
+    console.error('GPT 오류:', error)
+    return res.status(500).json({
+      success: false,
+      error: 'GPT 처리 중 오류가 발생했습니다.',
+    })
   }
 }
