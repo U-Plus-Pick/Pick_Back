@@ -210,7 +210,7 @@ function findClosestPlanPrice(planName) {
   return null
 }
 
-// 통합된 채팅 함수 (HTTP 라우터용)
+// 통합된 채팅 함수
 export const chatWithGPT = async (req, res) => {
   try {
     const messages = req.body.messages || []
@@ -375,126 +375,5 @@ export const chatWithGPT = async (req, res) => {
       success: false,
       error: 'GPT 처리 중 오류가 발생했습니다.',
     })
-  }
-}
-
-// WebSocket용 통합 채팅 함수 (server.js에서 사용)
-export const unifiedChatWithGPT = async (userMessage, type = 'auto') => {
-  try {
-    if (!userMessage) {
-      throw new Error('메시지가 필요합니다.')
-    }
-
-    // 키워드 규칙 체크 (지인 결합 등)
-    const rule = keywordRules.find(rule =>
-      rule.pattern
-        ? rule.pattern.test(userMessage.trim())
-        : rule.keywords?.some(keyword => userMessage.includes(keyword))
-    )
-
-    if (rule) {
-      return rule.response
-    }
-
-    // 첫 번째 GPT 호출
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4.1-mini',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userMessage },
-      ],
-      functions: allFunctions,
-      function_call: 'auto',
-    })
-
-    const message = response.choices[0].message
-
-    if (!message.function_call) {
-      return message.content
-    }
-
-    // 함수 호출 처리
-    const functionName = message.function_call.name
-    const functionArgs = JSON.parse(message.function_call.arguments)
-    let functionResult
-
-    if (functionName === 'calculateFamilyBundleDiscount') {
-      // 결합 할인 계산
-      let prices = []
-
-      if (functionArgs.planNames && Array.isArray(functionArgs.planNames)) {
-        prices = functionArgs.planNames.map(findClosestPlanPrice).filter(p => p !== null)
-      } else if (functionArgs.planPrices && Array.isArray(functionArgs.planPrices)) {
-        prices = functionArgs.planPrices.map(p => parseInt(p, 10)).filter(p => !isNaN(p))
-      }
-
-      if (prices.length === 0) {
-        throw new Error(
-          '입력하신 요금제명을 찾을 수 없거나 가격이 없습니다. 정확한 요금제명 또는 가격을 입력해주세요.'
-        )
-      }
-
-      functionResult = calculateFamilyBundle(prices)
-    } else if (functionName === 'recommendPlan') {
-      // 요금제 추천
-      try {
-        functionResult = await runRecommendPlan(functionArgs)
-      } catch (error) {
-        console.error('recommendPlan 오류:', error)
-        throw new Error('recommendPlan 함수 실행 중 오류가 발생했습니다.')
-      }
-
-      // 기본값 제거
-      if (functionArgs.plan_monthly_fee === 9999) delete functionArgs.plan_monthly_fee
-      if (functionArgs.plan_data_count === 50) delete functionArgs.plan_data_count
-      if (functionArgs.plan_voice_minutes === 0) delete functionArgs.plan_voice_minutes
-    } else {
-      // 멤버십 관련 함수들
-      functionResult = await executeFunction(functionName, functionArgs)
-    }
-
-    // 두 번째 GPT 호출
-    let secondSystemContent = ''
-
-    if (functionName === 'recommendPlan') {
-      secondSystemContent = `요금제 추천 결과를 깔끔하고 이해하기 쉽게 정리해주세요.
-
-## 응답 형식
-
-### 표 형태로 정리
-- 요금제명, 월 요금, 데이터, 통화, SMS, 주요 혜택을 표로 정리
-- 여러 요금제가 있을 경우 비교표 형태로 작성
-
-### 추천 이유 설명
-- 표 아래에 1-2줄로 추천 이유를 간결하게 설명
-- 고객의 사용 패턴과 요금제의 장점을 연결
-
-### 추가 안내
-- 고객의 조건이 불완전할 경우: "더 자세한 정보를 알려주시면 더 정확한 추천이 가능해요!"
-- 마지막에 친근한 마무리 문구 추가
-
-### 스타일 가이드
-- 친근하고 전문적인 톤 유지
-- 이모지 적절히 사용하여 가독성 향상
-- 명확하고 간결한 문장 사용`
-    } else {
-      secondSystemContent =
-        '함수 결과를 바탕으로 친절하고 자세하게 답변해주세요. 혜택이 많은 경우 주요 혜택들을 "•"로 시작하는 목록 형태로 정리해서 보기 좋게 안내해주세요. 목록의 각 항목은 짧고 간결하게 작성하고, 목록 앞뒤에는 한 줄씩 공백을 추가하여 문단을 구분하고, 마지막 안내문은 목록과 별도의 문단으로 작성해주세요.'
-    }
-
-    const finalResponse = await openai.chat.completions.create({
-      model: 'gpt-4.1-mini',
-      messages: [
-        { role: 'system', content: secondSystemContent },
-        { role: 'user', content: userMessage },
-        { role: 'assistant', content: null, function_call: message.function_call },
-        { role: 'function', name: functionName, content: JSON.stringify(functionResult) },
-      ],
-    })
-
-    return finalResponse.choices[0].message.content
-  } catch (error) {
-    console.error('GPT 오류:', error)
-    throw new Error('GPT 처리 중 오류가 발생했습니다.')
   }
 }

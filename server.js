@@ -11,7 +11,6 @@ import usersRoutes from './routes/users.routes.js'
 import partyRoutes from './routes/party.routes.js'
 import joinRequestRoutes from './routes/joinRequest.routes.js'
 import allPlanRoutes from './routes/allPlan.routes.js'
-import chatRouter from './routes/chat.js'
 import tossPaymentsRoutes from './routes/tossPayments.routes.js'
 import paymentsRoutes from './routes/payments.routes.js'
 
@@ -61,7 +60,6 @@ app.use(
 connectDB()
 
 // 라우터 등록
-app.use('/api/gpt', chatRouter)
 app.use('/api/users', usersRoutes)
 app.use('/api/party', partyRoutes)
 app.use('/api/join-requests', joinRequestRoutes)
@@ -78,28 +76,84 @@ app.get('/', (req, res) => {
 io.on('connection', socket => {
   console.log('새 클라이언트 연결됨:', socket.id)
 
+  // 사용자별 대화 히스토리 저장
+  let conversationHistory = []
+
   // 채팅 메시지 처리
   socket.on('chat_message', async data => {
     try {
       console.log('채팅 메시지 수신:', data)
-      const { message, type } = data
+      const { message, messages, clearHistory } = data
+
+      // 히스토리 초기화 요청 시
+      if (clearHistory) {
+        conversationHistory = []
+        socket.emit('chat_history_cleared')
+        return
+      }
+
+      // 전달받은 messages가 있으면 사용, 없으면 서버의 히스토리 사용
+      const currentMessages = messages || conversationHistory
 
       // 스트리밍 시작 신호
       socket.emit('chat_response_start')
 
-      // GPT API 호출
-      const { unifiedChatWithGPT } = await import('./services/chatService.js')
-      const response = await unifiedChatWithGPT(message, type || 'auto')
+      // 통합된 chatWithGPT 함수 사용 (HTTP용을 Socket용으로 활용)
+      const { chatWithGPT } = await import('./services/chatService.js')
 
-      // 스트리밍 효과로 응답 전송
-      const chunks = response.match(/.{1,10}/g) || [response]
-      for (const chunk of chunks) {
-        socket.emit('chat_response_chunk', { content: chunk })
-        await new Promise(resolve => setTimeout(resolve, 50))
+      // Mock req, res 객체 생성
+      const mockReq = {
+        body: {
+          message: message,
+          messages: currentMessages,
+        },
       }
 
-      // 스트리밍 완료
-      socket.emit('chat_response_end', { content: response })
+      let responseData = null
+      const mockRes = {
+        json: data => {
+          responseData = data
+        },
+        status: code => ({
+          json: data => {
+            responseData = { ...data, statusCode: code }
+          },
+        }),
+      }
+
+      // chatWithGPT 함수 실행
+      await chatWithGPT(mockReq, mockRes)
+
+      if (responseData && responseData.success) {
+        const response = responseData.response
+
+        // 대화 히스토리 업데이트
+        conversationHistory.push({ role: 'user', content: message })
+        conversationHistory.push({ role: 'assistant', content: response })
+
+        // 히스토리가 너무 길어지면 앞부분 제거 (최근 10개 교환만 유지)
+        if (conversationHistory.length > 20) {
+          conversationHistory = conversationHistory.slice(-20)
+        }
+
+        // 스트리밍 효과로 응답 전송
+        const chunks = response.match(/.{1,10}/g) || [response]
+        for (const chunk of chunks) {
+          socket.emit('chat_response_chunk', { content: chunk })
+          await new Promise(resolve => setTimeout(resolve, 50))
+        }
+
+        // 스트리밍 완료
+        socket.emit('chat_response_end', {
+          content: response,
+          conversationHistory: conversationHistory,
+        })
+      } else {
+        // 에러 응답 처리
+        socket.emit('chat_error', {
+          message: responseData?.error || '일시적인 오류가 발생했습니다.',
+        })
+      }
     } catch (error) {
       console.error('채팅 처리 오류:', error)
       socket.emit('chat_error', {
@@ -108,8 +162,15 @@ io.on('connection', socket => {
     }
   })
 
+  // 대화 히스토리 요청
+  socket.on('get_conversation_history', () => {
+    socket.emit('conversation_history', conversationHistory)
+  })
+
   socket.on('disconnect', () => {
     console.log('클라이언트 연결 종료:', socket.id)
+    // 연결 종료시 히스토리 정리
+    conversationHistory = []
   })
 })
 
