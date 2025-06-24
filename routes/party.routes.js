@@ -307,33 +307,6 @@ router.post('/leave', isLoggedIn, async (req, res) => {
   }
 })
 
-// 활성 파티 조회
-router.get('/active', async (req, res) => {
-  try {
-    const parties = await Party.find({ party_status: { $ne: '파티 해체' } })
-      .populate('party_leader_id', 'name email')
-      .populate('party_members.member_id', 'name email')
-
-    res.send({
-      active_parties: parties.map(party => ({
-        party_id: party._id,
-        party_leader: {
-          email: party.party_leader_email,
-          name: party.party_leader_name,
-        },
-        party_members: party.party_members.map(m => ({
-          email: m.member_email,
-          name: m.member_name,
-        })),
-        party_status: party.party_status,
-        created_at: party.created_at,
-      })),
-    })
-  } catch (err) {
-    console.error(err)
-    res.status(500).send({ message: '파티 정보 조회 실패' })
-  }
-})
 // 파티 상태 조회 (로그인 사용자 기반)
 router.get('/status', isLoggedIn, async (req, res) => {
   try {
