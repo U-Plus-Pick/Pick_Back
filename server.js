@@ -9,7 +9,7 @@ import connectDB from './config/db.js'
 // 라우터 imports
 import usersRoutes from './routes/users.routes.js'
 import partyRoutes from './routes/party.routes.js'
-import joinRequestRoutes from './routes/joinRequest.routes.js'
+import partyApplicantRoutes from './routes/partyApplicant.routes.js'
 import allPlanRoutes from './routes/allPlan.routes.js'
 import tossPaymentsRoutes from './routes/tossPayments.routes.js'
 import paymentsRoutes from './routes/payments.routes.js'
@@ -62,7 +62,7 @@ connectDB()
 // 라우터 등록
 app.use('/api/users', usersRoutes)
 app.use('/api/party', partyRoutes)
-app.use('/api/join-requests', joinRequestRoutes)
+app.use('/api/join-requests', partyApplicantRoutes)
 app.use('/api/plans', allPlanRoutes)
 app.use('/api/toss', tossPaymentsRoutes)
 app.use('/api/payments', paymentsRoutes)

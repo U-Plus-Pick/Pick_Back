@@ -2,7 +2,7 @@ import express from 'express'
 import jwt from 'jsonwebtoken'
 import User from '../models/User.js'
 import Plan from '../models/Plan.js'
-import PartyApplicant from '../models/PartyApplicant.js'
+import PartyApplicant from '../models/PartyApplicant.model.js'
 import authMiddleware from '../middleware/authMiddleware.js'
 
 const router = express.Router()
