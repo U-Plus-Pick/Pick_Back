@@ -1,23 +1,44 @@
 import express from 'express'
-import JoinRequest from '../models/joinRequest.model.js'
+import mongoose from 'mongoose'
+import PartyApplicant from '../models/PartyApplicant.js'
 import User from '../models/User.js'
 import Plan from '../models/Plan.js'
-
+import Party from '../models/Party.js'
 const router = express.Router()
 
-router.post('/', async (req, res) => {
-  try {
-    const { user_email, role, terms_agreed } = req.body
+// 세션 기반 인증 미들웨어
+function isLoggedIn(req, res, next) {
+  if (req.session && req.session.user && req.session.user._id) {
+    next()
+  } else {
+    res.status(401).send({ message: '로그인이 필요합니다.' })
+  }
+}
 
-    // 1) 사용자 정보 조회 + 요금제 populate
-    const user = await User.findOne({ email: user_email }).populate('plan_id')
-    if (!user) {
-      return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' })
+// 파티 신청
+router.post('/', isLoggedIn, async (req, res) => {
+  try {
+    const { role } = req.body
+    const sessionUser = req.session.user
+
+    const user_id = sessionUser._id
+
+    if (!role === undefined) {
+      return res.status(400).send({ message: 'role는 필수입니다.' })
     }
 
-    const user_id = user._id
+    const apply_division = role === 'leader' ? '파티장' : '파티원'
+    if (!['파티장', '파티원'].includes(apply_division)) {
+      return res.status(400).send({ message: '유효하지 않은 role 값입니다.' })
+    }
 
-    // 2) 허용된 요금제 리스트
+    // 사용자 정보 조회 (plan_id 대신 plan 이름을 직접 저장한다고 가정)
+    const user = await User.findById(user_id)
+    if (!user) {
+      return res.status(404).send({ message: '사용자를 찾을 수 없습니다.' })
+    }
+
+    // 허용된 요금제 리스트
     const allowedPlans = [
       '5G 시그니처',
       '5G 프리미어 슈퍼',
@@ -33,41 +54,48 @@ router.post('/', async (req, res) => {
       'LTE 프리미어 에센셜',
     ]
 
-    const planName = user.plan_id?.plan_name
-    if (!allowedPlans.includes(planName)) {
-      return res.status(400).json({
-        message:
-          '5G 시그니처, 5G 프리미어 슈퍼/플러스/레귤러/에센셜, 5G 스마트/프리미엄/스페셜, 5G 슈퍼 플래티넘/플래티넘, LTE 프리미어 플러스/에센셜 요금제를 사용하는 고객만 파티 가입이 가능합니다.',
+    const userPlanName = user.plan // User 모델에 plan이 문자열로 있다고 가정
+    if (!allowedPlans.includes(userPlanName)) {
+      return res.status(400).send({
+        message: '허용된 요금제를 사용하는 고객만 파티 신청이 가능합니다.',
       })
     }
 
-    // 3) 이미 신청했는지 확인
-    const existing = await JoinRequest.findOne({
-      user_id,
-      join_status: { $in: ['pending', 'matched'] },
+    // 중복 신청 체크
+    const existing = await PartyApplicant.findOne({
+      applicant_email: user.email,
     })
 
     if (existing) {
-      return res.status(400).json({
-        message: '이미 대기 중이거나 매칭된 파티가 있어 중복 신청이 불가능합니다.',
-      })
+      return res.status(400).send({ message: '이미 파티 신청이 존재합니다.' })
     }
 
-    // 4) 신규 신청 생성
-    const newRequest = new JoinRequest({
-      user_id,
-      role,
-      terms_agreed,
-      join_status: 'pending',
-      priority: 1,
+    // 중복 파티 체크
+    const existingParty = await Party.findOne({
+      $or: [{ party_leader_id: user_id }, { 'party_members.member_id': user_id }],
+      party_status: { $ne: '파티 해체' },
     })
 
-    await newRequest.save()
+    if (existingParty) {
+      return res.status(400).send({ message: '이미 다른 파티에 참여 중입니다.' })
+    }
 
-    res.status(201).json({ message: 'Join request created', data: newRequest })
+    const applicant = new PartyApplicant({
+      party_id: null,
+      applicant_phone: user.phone,
+      applicant_email: user.email,
+      applicant_birth: user.birthdate,
+      applicant_plan: userPlanName, // 문자열로 저장
+      apply_division,
+      applicant_priority: 0,
+    })
+
+    await applicant.save()
+
+    res.status(201).send({ message: '파티 신청이 완료되었습니다.', applicant_id: applicant._id })
   } catch (err) {
     console.error(err)
-    res.status(400).json({ message: 'Error creating join request', error: err.message })
+    res.status(500).send({ message: '서버 오류' })
   }
 })
 
