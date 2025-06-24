@@ -19,13 +19,11 @@ function isLoggedIn(req, res, next) {
 // ✅ 파티 신청 API
 router.post('/join-requests', isLoggedIn, async (req, res) => {
   try {
-    const { user_id, role, name, terms_agreed, plan_name } = req.body
+    const { user_id, role, name, plan_name } = req.body
 
     // 필수 필드 검증
-    if (!user_id || !role || !terms_agreed) {
-      return res
-        .status(400)
-        .send({ message: 'user_id, role, terms_agreed, plan_name은 필수입니다.' })
+    if (!user_id || !role) {
+      return res.status(400).send({ message: 'user_id, role, plan_name은 필수입니다.' })
     }
 
     if (!mongoose.Types.ObjectId.isValid(user_id)) {
@@ -99,8 +97,6 @@ router.post('/join-requests', isLoggedIn, async (req, res) => {
       applicant_plan: plan._id,
       apply_division,
       applicant_priority: 0,
-      terms_agreed,
-      document_status: '미제출',
     })
 
     await applicant.save()
@@ -182,7 +178,6 @@ router.post('/match', async (req, res) => {
           member_id: user ? user._id : null,
           member_email: m.applicant_email,
           member_name: user ? user.name : 'Unknown',
-          document_status: m.document_status,
         }
       }),
       party_status: '모집완료',
@@ -312,34 +307,6 @@ router.post('/leave', isLoggedIn, async (req, res) => {
   }
 })
 
-// 활성 파티 조회
-router.get('/active', async (req, res) => {
-  try {
-    const parties = await Party.find({ party_status: { $ne: '파티 해체' } })
-      .populate('party_leader_id', 'name email')
-      .populate('party_members.member_id', 'name email')
-
-    res.send({
-      active_parties: parties.map(party => ({
-        party_id: party._id,
-        party_leader: {
-          email: party.party_leader_email,
-          name: party.party_leader_name,
-        },
-        party_members: party.party_members.map(m => ({
-          email: m.member_email,
-          name: m.member_name,
-          document_status: m.document_status,
-        })),
-        party_status: party.party_status,
-        created_at: party.created_at,
-      })),
-    })
-  } catch (err) {
-    console.error(err)
-    res.status(500).send({ message: '파티 정보 조회 실패' })
-  }
-})
 // 파티 상태 조회 (로그인 사용자 기반)
 router.get('/status', isLoggedIn, async (req, res) => {
   try {

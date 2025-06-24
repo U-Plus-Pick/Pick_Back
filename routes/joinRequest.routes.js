@@ -18,13 +18,13 @@ function isLoggedIn(req, res, next) {
 // 파티 신청
 router.post('/', isLoggedIn, async (req, res) => {
   try {
-    const { role, terms_agreed } = req.body
+    const { role } = req.body
     const sessionUser = req.session.user
 
     const user_id = sessionUser._id
 
-    if (!role || terms_agreed === undefined) {
-      return res.status(400).send({ message: 'role, terms_agreed는 필수입니다.' })
+    if (!role === undefined) {
+      return res.status(400).send({ message: 'role는 필수입니다.' })
     }
 
     const apply_division = role === 'leader' ? '파티장' : '파티원'
@@ -88,8 +88,6 @@ router.post('/', isLoggedIn, async (req, res) => {
       applicant_plan: userPlanName, // 문자열로 저장
       apply_division,
       applicant_priority: 0,
-      terms_agreed,
-      document_status: '미제출',
     })
 
     await applicant.save()
