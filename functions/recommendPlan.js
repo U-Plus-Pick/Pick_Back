@@ -1,5 +1,5 @@
 import { getDb } from '../config/mongo.js'
-import Plan from '../models/Plan.js'
+import { Plan } from '../models/Plan.js'
 
 export async function runRecommendPlan(args) {
   try {
@@ -25,16 +25,13 @@ export async function runRecommendPlan(args) {
     if (args.plan_data_count && args.plan_data_count > 0 && args.plan_data_count !== 50) {
       query.$and.push({ plan_data_count: { $gte: args.plan_data_count } })
     }
-
     if (args.plan_voice_minutes && args.plan_voice_minutes > 0) {
       query.$and.push({
         plan_voice_minutes: { $gte: args.plan_voice_minutes },
       })
     }
 
-    const plans = await collection.find(query).toArray()
-
-    // JavaScript에서 추가 필터링
+    const plans = await collection.find(query).toArray() // JavaScript에서 추가 필터링
     const filteredPlans = plans.filter(plan => {
       const planModel = new Plan(plan)
       return !planModel.isExcluded()
@@ -52,6 +49,10 @@ export async function runRecommendPlan(args) {
         .sort({ plan_monthly_fee: -1 })
         .limit(3)
         .toArray()
+
+      if (defaultPlans.length === 0) {
+        return []
+      }
 
       const filteredDefaultPlans = defaultPlans.filter(plan => {
         const planModel = new Plan(plan)
