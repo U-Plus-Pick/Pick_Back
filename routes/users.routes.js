@@ -106,10 +106,7 @@ router.get('/me', authMiddleware, async (req, res) => {
       applicant_email: user.email,
     }).lean()
 
-    let apply_division = 'none'
-    if (joinRequest) {
-      apply_division = joinRequest.apply_division === '파티장' ? 'leader' : 'member'
-    }
+    const apply_division = joinRequest?.apply_division || 'none'
 
     res.send({
       user_email: user.email,
