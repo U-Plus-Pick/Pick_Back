@@ -74,11 +74,11 @@ router.post('/signin', async (req, res) => {
     const isMatch = await user.comparePassword(password)
     if (!isMatch) {
       return res.status(401).send({ message: '이메일 또는 비밀번호가 틀렸습니다.' })
-    }
-
-    // 세션 및 JWT 생성
+    } // 세션 및 JWT 생성
     req.session.user = { _id: user._id, email: user.email }
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' })
+    const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, {
+      expiresIn: '1d',
+    })
 
     res.send({ message: '로그인 성공', token })
   } catch (err) {
