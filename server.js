@@ -14,6 +14,7 @@ import allPlanRoutes from './routes/allPlan.routes.js'
 import tossPaymentsRoutes from './routes/tossPayments.routes.js'
 import paymentsRoutes from './routes/payments.routes.js'
 import chatRoutes from './routes/chat.js'
+import submitDocumentRoutes from './routes/submitDocuments.js'
 
 // 환경변수 로딩
 dotenv.config()
@@ -68,6 +69,7 @@ app.use('/api/plans', allPlanRoutes)
 app.use('/api/toss', tossPaymentsRoutes)
 app.use('/api/payments', paymentsRoutes)
 app.use('/api/chat', chatRoutes)
+app.use('/api/party/documents', submitDocumentRoutes)
 
 // 기본 라우트
 app.get('/', (req, res) => {
