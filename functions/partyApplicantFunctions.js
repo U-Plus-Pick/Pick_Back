@@ -4,17 +4,17 @@ import User from '../models/User.js'
 import Plan from '../models/Plan.js'
 import mongoose from 'mongoose'
 
-    // 1. 필수 값 및 유효성 검사
-    // 2. 사용자 정보 및 요금제 유효성 확인
-    // 3. 중복 신청 또는 기존 파티 참여 여부 확인
-    // 4. PartyApplicant 컬렉션에 신청 정보 저장
-    // 5. User 컬렉션에 plan_id 업데이트
-    // 6. 응답 반환
+// 1. 필수 값 및 유효성 검사
+// 2. 사용자 정보 및 요금제 유효성 확인
+// 3. 중복 신청 또는 기존 파티 참여 여부 확인
+// 4. PartyApplicant 컬렉션에 신청 정보 저장
+// 5. User 컬렉션에 plan_id 업데이트
+// 6. 응답 반환
 
 export const applyToParty = async (req, res) => {
   try {
     const { id: user_id } = req.user
-    const { role, name, plan_name } = req.body
+    const { role, name } = req.body
 
     if (!user_id || !role) {
       return res.status(400).send({ message: 'user_id, role, plan_name은 필수입니다.' })
@@ -24,8 +24,7 @@ export const applyToParty = async (req, res) => {
       return res.status(400).send({ message: '유효하지 않은 user_id입니다.' })
     }
 
-    const apply_division = role === 'leader' ? '파티장' : '파티원'
-    if (!['파티장', '파티원'].includes(apply_division)) {
+    if (!['leader', 'member'].includes(role)) {
       return res.status(400).send({ message: '유효하지 않은 role 값입니다.' })
     }
 
@@ -51,8 +50,14 @@ export const applyToParty = async (req, res) => {
       'LTE 프리미어 에센셜',
     ]
 
-    const plan = await Plan.findOne({ plan_name: { $regex: `^${plan_name}$`, $options: 'i' } })
-    if (!plan || !allowedPlans.includes(plan.plan_name)) {
+    const allowedPlansLower = allowedPlans.map(p => p.trim().toLowerCase())
+
+    const plan = await Plan.findOne({ plan_name: { $regex: `^${user.plan}$`, $options: 'i' } })
+    if (!plan) {
+      return res.status(400).send({ message: '사용자의 요금제를 찾을 수 없습니다.' })
+    }
+
+    if (!allowedPlansLower.includes(plan.plan_name.trim().toLowerCase())) {
       return res.status(400).send({
         message: '지정된 요금제 사용자만 파티 신청이 가능합니다.',
       })
@@ -78,13 +83,13 @@ export const applyToParty = async (req, res) => {
       applicant_phone: user.phone,
       applicant_email: user.email,
       applicant_birth: user.birthdate,
-      applicant_plan: plan._id,
-      apply_division,
+      applicant_plan: plan.plan_name,
+      apply_division: role,
       applicant_priority: 0,
     })
 
     await applicant.save()
-    await User.findByIdAndUpdate(user_id, { plan_id: plan._id })
+    await User.findByIdAndUpdate(user_id, { plan: plan.plan_name })
 
     res.status(201).send({
       message: '파티 신청이 완료되었습니다.',

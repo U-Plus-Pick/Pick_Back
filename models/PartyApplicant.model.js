@@ -9,13 +9,8 @@ const partyApplicantSchema = new mongoose.Schema({
     type: String, // ObjectId 대신 문자열로 저장
     required: true,
   },
-  apply_division: { type: String, enum: ['파티장', '파티원'], required: true },
+  apply_division: { type: String, enum: ['leader', 'member'], required: true },
   applicant_priority: { type: Number, default: 0 },
-  document_status: {
-    type: String,
-    enum: ['미제출', '제출완료', '검토중', '승인', '반려'],
-    default: '미제출',
-  },
   created_at: { type: Date, default: Date.now },
 })
 
