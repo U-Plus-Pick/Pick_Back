@@ -1,5 +1,5 @@
 import express from 'express'
-import Payment from '../models/Payments.js'
+import Payment from '../models/Payment.js'
 import authMiddleware from '../middleware/authMiddleware.js'
 
 const router = express.Router()

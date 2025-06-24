@@ -4,10 +4,13 @@ import session from 'express-session'
 import MongoStore from 'connect-mongo'
 import userRoutes from './routes/users.routes.js'
 import partyRoutes from './routes/party.routes.js'
-import joinRequestRoutes from './routes/joinRequest.routes.js' // ✅
+import joinRequestRoutes from './routes/joinRequest.routes.js'
 import dotenv from 'dotenv'
 import allPlanRoutes from './routes/allPlan.routes.js'
 import cors from 'cors'
+import paymentRoutes from './routes/payments.routes.js'
+import cron from 'node-cron'
+
 dotenv.config()
 
 const app = express()
@@ -40,6 +43,7 @@ app.use('/api/users', userRoutes)
 app.use('/api/party', partyRoutes)
 app.use('/api/plans', allPlanRoutes) //전체 요금제 조회
 app.use('/api/join-requests', joinRequestRoutes)
+app.use('/api/payments', paymentRoutes)
 app.use((req, res) => {
   res.status(404).send({ message: `Cannot ${req.method} ${req.originalUrl}` })
 })
@@ -51,3 +55,12 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => console.log(`서버가 포트 ${PORT}에서 실행 중`))
+
+// // 매 10초마다 자동 매칭 시도
+// cron.schedule('*/10 * * * * *', async () => {
+//   try {
+//     await attemptAutoMatch()
+//   } catch (err) {
+//     console.error('[자동매칭 에러]', err)
+//   }
+// })

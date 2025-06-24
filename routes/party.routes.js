@@ -237,7 +237,6 @@ router.get('/infor', isLoggedIn, async (req, res) => {
   }
 })
 
-// 파티 탈퇴
 router.post('/leave', isLoggedIn, async (req, res) => {
   try {
     const userId = req.session.user._id
@@ -264,37 +263,40 @@ router.post('/leave', isLoggedIn, async (req, res) => {
     }
 
     if (isLeader || party.party_members.length <= 3) {
-      // 🔸 리더 탈퇴 or 파티원 수 3 이하 → 파티 해체
+      // 파티 해체 처리
       party.party_status = '파티 해체'
       await party.save()
 
-      // 🔸 리더 본인만 신청 기록 삭제
+      // 탈퇴자 신청서 완전 삭제
       await PartyApplicant.deleteOne({
         applicant_email: user.email,
         party_id: party._id,
       })
 
-      // 🔸 나머지 파티원은 신청 기록 유지 (옵션: priority만 조정하고 삭제 X)
+      // 나머지 멤버들은 party_id null 처리 + 우선순위 +1
       await PartyApplicant.updateMany(
         {
-          applicant_email: { $ne: user.email },
           party_id: party._id,
+          applicant_email: { $ne: user.email },
         },
         {
-          $set: { party_id: null, applicant_priority: 1 },
+          $set: { party_id: null },
+          $inc: { applicant_priority: 1 },
         }
       )
 
-      return res.send({
-        message: '파티가 해체되었고 탈퇴자는 신청 기록이 삭제되었습니다.',
-      })
+      const reason = isLeader
+        ? '파티장이 탈퇴하여 파티가 해체되었습니다.'
+        : '파티원이 3명 이하로 남아 파티가 해체되었습니다.'
+
+      return res.send({ message: reason })
     }
 
-    // 🔸 일반 파티원 탈퇴
+    // 일반 멤버 탈퇴 시
     party.party_members.splice(memberIndex, 1)
     await party.save()
 
-    // 🔸 해당 사용자만 신청 기록 삭제
+    // 탈퇴자 신청서 완전 삭제
     await PartyApplicant.deleteOne({
       applicant_email: user.email,
       party_id: party._id,

@@ -104,7 +104,6 @@ router.get('/me', authMiddleware, async (req, res) => {
     // 파티 신청 상태 조회
     const joinRequest = await PartyApplicant.findOne({
       applicant_email: user.email,
-      party_id: null,
     }).lean()
 
     let apply_division = 'none'
