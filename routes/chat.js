@@ -8,7 +8,7 @@ import {
 const router = express.Router()
 router.post('/chat', bundleDiscountChatWithGPT)
 
-router.post('/', async (req, res) => {
+router.post('/chat', async (req, res) => {
   try {
     const { message } = req.body
     const response = await membershipChatWithGPT(message)
