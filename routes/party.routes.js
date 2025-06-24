@@ -19,13 +19,11 @@ function isLoggedIn(req, res, next) {
 // ✅ 파티 신청 API
 router.post('/join-requests', isLoggedIn, async (req, res) => {
   try {
-    const { user_id, role, name, terms_agreed, plan_name } = req.body
+    const { user_id, role, name, plan_name } = req.body
 
     // 필수 필드 검증
-    if (!user_id || !role || !terms_agreed) {
-      return res
-        .status(400)
-        .send({ message: 'user_id, role, terms_agreed, plan_name은 필수입니다.' })
+    if (!user_id || !role) {
+      return res.status(400).send({ message: 'user_id, role, plan_name은 필수입니다.' })
     }
 
     if (!mongoose.Types.ObjectId.isValid(user_id)) {
@@ -99,8 +97,6 @@ router.post('/join-requests', isLoggedIn, async (req, res) => {
       applicant_plan: plan._id,
       apply_division,
       applicant_priority: 0,
-      terms_agreed,
-      document_status: '미제출',
     })
 
     await applicant.save()
@@ -182,7 +178,6 @@ router.post('/match', async (req, res) => {
           member_id: user ? user._id : null,
           member_email: m.applicant_email,
           member_name: user ? user.name : 'Unknown',
-          document_status: m.document_status,
         }
       }),
       party_status: '모집완료',
@@ -329,7 +324,6 @@ router.get('/active', async (req, res) => {
         party_members: party.party_members.map(m => ({
           email: m.member_email,
           name: m.member_name,
-          document_status: m.document_status,
         })),
         party_status: party.party_status,
         created_at: party.created_at,
