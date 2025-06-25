@@ -125,9 +125,10 @@ MongoDB를 데이터베이스로 사용하며, RESTful API와 Socket.IO 기반 �
 
 ## 실행 방법
 npm install
+
 npm run dev
 
-주요 API 엔드포인트
+## 주요 API 엔드포인트
 메서드	URL	설명
 POST	/api/users/register	회원가입
 POST	/api/users/login	로그인
@@ -137,6 +138,6 @@ GET	/api/chatbot	챗봇 메시지 송수신
 
 📌 더 자세한 API 설명은 Swagger 혹은 API 명세 문서 참고
 
-참고 사항
+## 참고 사항
 데이터 모델 및 ERD는 Notion 문서 참고
 ESLint, Prettier 기반 코드 스타일 적용
