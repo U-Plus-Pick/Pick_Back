@@ -38,7 +38,6 @@ const chatroomSchema = new mongoose.Schema(
     chat_message: [chatMessageSchema],
     chatroom_title: {
       type: String,
-      maxlength: 30,
       default: null,
     },
   },

@@ -45,7 +45,8 @@ app.use(
 )
 
 // 기본 미들웨어
-app.use(express.json())
+app.use(express.json({ limit: '20mb' }))
+app.use(express.urlencoded({ limit: '20mb', extended: true }))
 
 // 세션 설정
 app.use(

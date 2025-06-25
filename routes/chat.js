@@ -3,58 +3,7 @@ import { chatWithGPT } from '../services/chatService.js'
 import User from '../models/User.js'
 import { authMiddleware } from '../middleware/authMiddleware.js'
 import mongoose from 'mongoose'
-
-// ChatRoom 스키마를 직접 정의 (복합 인덱스 사용)
-const chatMessageSchema = new mongoose.Schema({
-  role: {
-    type: String,
-    enum: ['user', 'bot'],
-    required: true,
-  },
-  message: {
-    type: String,
-    required: true,
-  },
-  timestamp: {
-    type: Date,
-    default: Date.now,
-  },
-})
-
-const chatroomSchema = new mongoose.Schema(
-  {
-    chatroom_id: {
-      type: Number,
-      required: true,
-      // unique 제거 - 복합 인덱스로 변경
-    },
-    user_email: {
-      type: String,
-      required: true,
-      ref: 'User',
-    },
-    started_at: {
-      type: Date,
-      default: Date.now,
-    },
-    ended_at: {
-      type: Date,
-      default: null,
-    },
-    chat_message: [chatMessageSchema],
-    chatroom_title: {
-      type: String,
-      maxlength: 30,
-      default: null,
-    },
-  },
-  {
-    timestamps: true,
-  }
-)
-
-// 복합 인덱스 생성 - chatroom_id와 user_email의 조합이 유니크
-chatroomSchema.index({ chatroom_id: 1, user_email: 1 }, { unique: true })
+import chatroomSchema from '../models/ChatRoom.js'
 
 const Chatroom = mongoose.models.Chatroom || mongoose.model('Chatroom', chatroomSchema)
 
@@ -67,7 +16,7 @@ router.post('/chat', chatWithGPT)
 router.post('/insert-messages', authMiddleware, async (req, res) => {
   console.log('=== 채팅 메시지 저장 API 호출됨 ===')
   console.log('Request body:', req.body)
-
+  
   try {
     const { chatroom_id, messages, chatroom_title } = req.body
     const user_email = req.user.email // authMiddleware에서 추출된 사용자 정보
@@ -104,11 +53,10 @@ router.post('/insert-messages', authMiddleware, async (req, res) => {
       }
 
       await chatroom.save()
-      console.log('기존 채팅방 업데이트 완료')
-    } else {
+      console.log('기존 채팅방 업데이트 완료')    } else {
       // 새 채팅방 생성 - 중복 방지를 위해 고유한 ID 생성
       let uniqueChatroomId = chatroom_id || Date.now()
-
+      
       // 혹시 같은 ID가 이미 존재하는지 확인
       const existingRoom = await Chatroom.findOne({ chatroom_id: uniqueChatroomId })
       if (existingRoom) {
