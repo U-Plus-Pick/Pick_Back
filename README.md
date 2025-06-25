@@ -1,4 +1,7 @@
-# Pick_Back
+![image](https://github.com/user-attachments/assets/36e40504-633a-47c9-a790-07bd92c9e027)
+
+>당신의 U+, 당신만의 AI
+
 # U+Pick Backend
 
 ## 개요
