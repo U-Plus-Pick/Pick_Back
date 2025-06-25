@@ -131,5 +131,5 @@ npm run dev
 📌 더 자세한 API 설명은 notion API 명세 문서 참고
 
 ## 참고 사항
-데이터 모델 및 ERD는 Notion 문서 참고
+데이터 모델 및 ERD는 Notion 문서 참고  
 ESLint, Prettier 기반 코드 스타일 적용
