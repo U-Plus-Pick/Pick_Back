@@ -1,6 +1,7 @@
 import express from 'express'
 import jwt from 'jsonwebtoken'
 import User from '../models/User.js'
+import Party from '../models/party.model.js'
 import Plan from '../models/Plan.js'
 import PartyApplicant from '../models/PartyApplicant.model.js'
 import authMiddleware from '../middleware/authMiddleware.js'
@@ -91,22 +92,27 @@ router.post('/signin', async (req, res) => {
 router.get('/me', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password').lean()
+    if (!user) return res.status(404).send({ message: '사용자를 찾을 수 없습니다.' })
 
-    if (!user) {
-      return res.status(404).send({ message: '사용자를 찾을 수 없습니다.' })
-    }
+    if (user.birthdate) user.birthdate = user.birthdate.toISOString().split('T')[0]
 
-    // 생년월일 포맷
-    if (user.birthdate) {
-      user.birthdate = user.birthdate.toISOString().split('T')[0]
-    }
-
-    // 파티 신청 상태 조회
-    const joinRequest = await PartyApplicant.findOne({
-      applicant_email: user.email,
+    //먼저 Party 컬렉션 체크
+    const party = await Party.findOne({
+      $or: [{ party_leader_id: user._id }, { 'party_members.member_id': user._id }],
+      party_status: { $ne: '파티 해체' },
     }).lean()
 
-    const apply_division = joinRequest?.apply_division || 'none'
+    let apply_division = 'none'
+    if (party) {
+      apply_division =
+        party.party_leader_id.toString() === user._id.toString() ? 'leader' : 'member'
+    } else {
+      //파티가 없으면 PartyApplicant 확인
+      const joinRequest = await PartyApplicant.findOne({
+        applicant_email: user.email,
+      }).lean()
+      apply_division = joinRequest?.apply_division || 'none'
+    }
 
     res.send({
       user_email: user.email,
@@ -114,7 +120,7 @@ router.get('/me', authMiddleware, async (req, res) => {
       user_phone: user.phone,
       user_birth: user.birthdate,
       plans: user.plan || null,
-      apply_division,
+      apply_division, //leader / member / none
     })
   } catch (err) {
     console.error(err)
