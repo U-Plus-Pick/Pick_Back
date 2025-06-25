@@ -16,20 +16,13 @@ MongoDB를 데이터베이스로 사용하며 RESTful API와 Socket.IO 기반 �
 - 사용자 인증 및 회원관리 (JWT 기반)
 - 요금제, 결합 파티, 결제 관련 API 제공
 - AI 챗봇 메시지 저장 및 스트리밍 처리
-- 자동 결제 정산 처리 로직 구현
 - MongoDB를 활용한 데이터 모델링 및 조회 최적화
 
 ---
 
 ## 기술 스택
 
-| 구분     | 기술                                      |
-|----------|-------------------------------------------|
-| 서버     | Node.js, Express                         |
-| 데이터베이스 | MongoDB, Mongoose                       |
-| 실시간   | Socket.IO                                |
-| 인증     | JWT (jsonwebtoken)                      |
-| 기타     | dotenv, bcrypt (비밀번호 해싱), cors    |
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=node.js&logoColor=white) ![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=flat&logo=mongodb&logoColor=white) ![Express](https://img.shields.io/badge/Express-000000?style=flat&logo=express&logoColor=white)
 
 ---
 
