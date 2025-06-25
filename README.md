@@ -112,17 +112,19 @@ MongoDB를 데이터베이스로 사용하며, RESTful API와 Socket.IO 기반 �
 
 ````
 📦 backend/
-├── config/          # DB 연결 및 환경 설정
-├── controllers/     # 비즈니스 로직 함수 모음
-├── middleware/      # 미들웨어
-├── routes/          # API 라우터 정의
-├── services/        # 서비스 레이어 (비즈니스 규칙)
-├── utils/           # 유틸 함수
-├── app.js           # Express 앱 초기화 및 라우터 연결
-├── server.js        # 서버 진입점 (Express 실행)
-├── .env             # 환경 변수
-├── package.json     # 백엔드 의존성 관리
-└── README.md        # 백엔드 설명서
+├── config/          
+├── data/
+├── functions/  
+├── middleware/      
+├── models/      
+├── routes/
+├── schemas/     
+├── services/        
+├── utils/           
+├── app.js         
+├── server.js                     
+├── package.json   
+└── README.md        
 
 ````
 ---
@@ -131,7 +133,7 @@ MongoDB를 데이터베이스로 사용하며, RESTful API와 Socket.IO 기반 �
 
 ```bash
 npm install
-npm run dev
+node server.js
 ````
 
 ## 📌 주요 API 엔드포인트
@@ -140,8 +142,8 @@ npm run dev
 |--------|------------------------|--------------------------|
 | POST   | `/api/users/register` | 회원가입                 |
 | POST   | `/api/users/login`    | 로그인                   |
-| GET    | `/api/plans`          | 요금제 목록 조회         |
-| POST   | `/api/parties/join`   | 결합 파티 가입 요청      |
+| GET    | `/api/party/infor`    | 요금제 목록 조회         |
+| POST   | `/api/party/apply`    | 결합 파티 가입 요청      |
 | GET    | `/api/chatbot`        | 챗봇 메시지 송수신       |
 
 📌 더 자세한 API 설명은 notion API 명세 문서 참고
