@@ -96,7 +96,6 @@ MongoDB를 데이터베이스로 사용하며, RESTful API와 Socket.IO 기반 �
 - JWT 기반 사용자 인증 및 회원관리
 - 요금제, 결합 파티, 결제 관련 API 제공
 - AI 챗봇 메시지 저장 및 실시간 스트리밍 처리
-- MongoDB를 활용한 데이터 모델링 및 조회 최적화
 
 ---
 
@@ -144,7 +143,8 @@ node server.js
 | POST   | `/api/users/login`    | 로그인                   |
 | GET    | `/api/party/infor`    | 요금제 목록 조회         |
 | POST   | `/api/party/apply`    | 결합 파티 가입 요청      |
-| GET    | `/api/chatbot`        | 챗봇 메시지 송수신       |
+| POST    | `/api/chat/insert-messages`        | 챗봇 대화 메시지 저장       |
+
 
 📌 더 자세한 API 설명은 notion API 명세 문서 참고
 
