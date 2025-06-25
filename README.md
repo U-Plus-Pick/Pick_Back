@@ -11,6 +11,40 @@ MongoDB를 데이터베이스로 사용하며 RESTful API와 Socket.IO 기반 �
 
 ---
 
+## 프로젝트 기간
+
+📅 2025.06.09 ~ 2025.06.27
+
+---
+## 백엔드 담당
+
+<table>
+  <tr>
+    <td align="center">
+      <img href="https://github.com/Hanyeojun" src="https://avatars.githubusercontent.com/u/110558148?v=4" width="100" /><br/>
+      <strong>한여준</strong><br/>
+      <a href="https://github.com/Hanyeojun">@Hanyeojun</a>
+    </td>
+    <td align="center">
+      <img href="https://github.com/alex8396" src="https://avatars.githubusercontent.com/u/63743294?v=4" width="100" /><br/>
+      <strong>임재찬</strong><br/>
+      <a href="https://github.com/alex8396">@alex8396</a>
+    </td>
+  </tr>
+</table>
+
+
+---
+
+## 관련 링크
+
+- [프론트엔드 Repo](https://github.com/U-Plus-Pick/Pick_Front)
+- [백엔드 Repo](https://github.com/U-Plus-Pick/Pick_Back)
+- [프로젝트 Notion](https://wonderful-dewberry-9d0.notion.site/04-U-Pick-206796e7580e80cf8e1cefc9df8d4c23?source=copy_link)
+- [최종 시안 Figma](https://www.figma.com/design/qaATYVnUNOeFKnJQU6mdX2/U-Pick?node-id=0-1&p=f&t=FEsA1aEdVqXb2dNQ-0)
+
+---
+
 ## 주요 기능
 
 - 사용자 인증 및 회원관리 (JWT 기반)
