@@ -8,7 +8,6 @@ import Plan from '../models/Plan.js'
 export const getMyPartyInfo = async (req, res) => {
   try {
     const userId = req.user.id
-    console.log('현재 로그인된 유저 ID:', userId)
 
     // 본인이 리더거나 파티원인 파티 조회
     const party = await Party.findOne({
