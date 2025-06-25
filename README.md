@@ -106,7 +106,7 @@ MongoDB를 데이터베이스로 사용하며, RESTful API와 Socket.IO 기반 �
 ├── server.js        # 서버 진입점 (Express 실행)
 ├── .env             # 환경 변수
 ├── package.json     # 백엔드 의존성 관리
-└── README.md        # 백엔드 설명서서
+└── README.md        # 백엔드 설명서
 
 ````
 ---
