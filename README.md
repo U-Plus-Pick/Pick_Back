@@ -140,4 +140,5 @@ GET	/api/chatbot	챗봇 메시지 송수신
 
 ## 참고 사항
 데이터 모델 및 ERD는 Notion 문서 참고
+
 ESLint, Prettier 기반 코드 스타일 적용
