@@ -17,8 +17,6 @@
 
 ## 👨‍💻 팀원 소개
 
-### 🔧 백엔드 담당
-
 <table>
   <tr>
     <td align="center">
@@ -31,13 +29,6 @@
       <strong>임재찬</strong><br/>
       <a href="https://github.com/alex8396">@alex8396</a>
     </td>
-  </tr>
-</table>
-
-### 💻 프론트엔드 담당
-
-<table>
-  <tr>
     <td align="center">
       <img src="https://avatars.githubusercontent.com/u/101700659?v=4" width="100" /><br/>
       <strong>최영준</strong><br/>
