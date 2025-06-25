@@ -78,5 +78,3 @@ npm run dev      # nodemon으로 개발 서버 실행
 * 코드 스타일은 ESLint, Prettier 규칙에 따름
 
 ````
-
----
