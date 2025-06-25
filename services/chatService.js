@@ -337,7 +337,6 @@ export const chatWithGPT = async (req, res) => {
 - 명확하고 간결한 문장 사용
 - 무슨 일이 있어도 HTML 형식으로 작성해줘. <br> 태그를 사용해서 줄바꿈을 명시해줘.
 `
-
     } else {
       secondSystemContent =
         '함수 결과를 바탕으로 친절하고 자세하게 답변해주세요. 혜택이 많은 경우 주요 혜택들을 "•"로 시작하는 목록 형태로 정리해서 보기 좋게 안내해주세요. 목록의 각 항목은 짧고 간결하게 작성하고, 목록 앞뒤에는 한 줄씩 공백을 추가하여 문단을 구분하고, 마지막 안내문은 목록과 별도의 문단으로 작성해주세요. - 무슨 일이 있어도 HTML 형식으로 작성해줘. <br> 태그를 사용해서 줄바꿈을 명시해줘.'
@@ -367,7 +366,9 @@ export const chatWithGPT = async (req, res) => {
 
     return res.json({
       success: true,
-      response: finalResponse.choices[0].message.content,
+      response: finalResponse.choices[0].message.content
+        ? finalResponse.choices[0].message.content.replace(/\n/g, '<br>')
+        : '',
     })
   } catch (error) {
     console.error('GPT 오류:', error)
