@@ -94,7 +94,7 @@ MongoDB를 데이터베이스로 사용하며, RESTful API와 Socket.IO 기반 �
 
 ## 디렉터리 구조
 
-
+````
 📦 backend/
 ├── config/          # DB 연결 및 환경 설정
 ├── controllers/     # 비즈니스 로직 함수 모음
@@ -108,7 +108,7 @@ MongoDB를 데이터베이스로 사용하며, RESTful API와 Socket.IO 기반 �
 ├── package.json     # 백엔드 의존성 관리
 └── README.md        # 백엔드 설명서서
 
-
+````
 ---
 
 ## 실행 방법
