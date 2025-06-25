@@ -95,30 +95,18 @@ MongoDB를 데이터베이스로 사용하며, RESTful API와 Socket.IO 기반 �
 ## 디렉터리 구조
 
 📦 backend/
-
-├── config/ # DB 연결 및 환경 설정
-
-├── controllers/ # 비즈니스 로직 함수 모음
-
-├── middleware/ # 인증, 에러 핸들링 등 미들웨어
-
-├── models/ # MongoDB 스키마 정의
-
-├── routes/ # API 라우터 정의
-
-├── services/ # 서비스 레이어
-
-├── utils/ # 유틸 함수
-
-├── app.js # Express 앱 초기화 및 라우터 연결
-
-├── server.js # 서버 진입점
-
-├── .env # 환경 변수
-
-├── package.json # 백엔드 의존성 관리
-
-└── README.md # 백엔드 설명서
+├── config/          # DB 연결 및 환경 설정
+├── controllers/     # 비즈니스 로직 함수 모음
+├── middleware/      # 인증, 에러 핸들링 등 미들웨어
+├── models/          # MongoDB 스키마 정의
+├── routes/          # API 라우터 정의
+├── services/        # 서비스 레이어 (비즈니스 규칙)
+├── utils/           # 유틸 함수
+├── app.js           # Express 앱 초기화 및 라우터 연결
+├── server.js        # 서버 진입점 (Express 실행)
+├── .env             # 환경 변수
+├── package.json     # 백엔드 의존성 관리
+└── README.md        # 백엔드 설명서
 
 
 ---
