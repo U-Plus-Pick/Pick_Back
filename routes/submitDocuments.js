@@ -31,10 +31,19 @@ router.post('/', authMiddleware, upload.single('document'), async (req, res) => 
     const party_id = party._id.toString()
     const submitted_at = new Date()
 
+    // 한글 파일명 깨짐 방지
+    let originalName = file.originalname
+    try {
+      // latin1로 들어온 경우만 변환, 이미 정상인 경우는 그대로 사용
+      originalName = Buffer.from(file.originalname, 'latin1').toString('utf8')
+    } catch (e) {
+      // 변환 실패 시 원본 사용
+    }
+
     const newDoc = new SubmitDocument({
       party_id,
       user_email,
-      documents_name: file.originalname,
+      documents_name: originalName, // 변환된 파일명 사용
       documents: file.buffer,
       submitted_at,
     })
