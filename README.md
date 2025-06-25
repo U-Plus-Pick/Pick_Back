@@ -118,15 +118,17 @@ npm install
 npm run dev
 ````
 
-## 주요 API 엔드포인트
-메서드	URL	설명
-POST	/api/users/register	회원가입
-POST	/api/users/login	로그인
-GET	/api/plans	요금제 목록 조회
-POST	/api/parties/join	결합 파티 가입 요청
-GET	/api/chatbot	챗봇 메시지 송수신
+## 📌 주요 API 엔드포인트
 
-📌 더 자세한 API 설명은 Swagger 혹은 API 명세 문서 참고
+| 메서드 | URL                   | 설명                     |
+|--------|------------------------|--------------------------|
+| POST   | `/api/users/register` | 회원가입                 |
+| POST   | `/api/users/login`    | 로그인                   |
+| GET    | `/api/plans`          | 요금제 목록 조회         |
+| POST   | `/api/parties/join`   | 결합 파티 가입 요청      |
+| GET    | `/api/chatbot`        | 챗봇 메시지 송수신       |
+
+📌 더 자세한 API 설명은 notion API 명세 문서 참고
 
 ## 참고 사항
 데이터 모델 및 ERD는 Notion 문서 참고
