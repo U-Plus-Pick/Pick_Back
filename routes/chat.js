@@ -65,8 +65,6 @@ router.post('/create-room', authMiddleware, async (req, res) => {
 
 // 채팅 메시지 저장 API
 router.post('/insert-messages', authMiddleware, async (req, res) => {
-  console.log('=== 채팅 메시지 저장 API 호출됨 ===')
-
   try {
     const { chatroom_id, messages, chatroom_title } = req.body
     const user_email = req.user.email
@@ -115,7 +113,6 @@ router.post('/insert-messages', authMiddleware, async (req, res) => {
     }
 
     await chatroom.save()
-    console.log('채팅방 메시지 업데이트 완료, ID:', chatroom_id)
 
     res.status(200).json({
       success: true,
