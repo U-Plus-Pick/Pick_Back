@@ -23,8 +23,10 @@ router.post('/', authMiddleware, upload.single('document'), async (req, res) => 
       return res.status(404).json({ error: '해당 이메일의 사용자를 찾을 수 없습니다.' })
     }
 
-    // Party에서 party_id 찾기 (party_members.member_id에 user._id가 포함된 경우)
-    const party = await Party.findOne({ 'party_members.member_id': user._id })
+    // Party에서 party_id 찾기 (party_leader_id 또는 party_members.member_id에 user._id가 포함된 경우)
+    const party = await Party.findOne({
+      $or: [{ party_leader_id: user._id }, { 'party_members.member_id': user._id }],
+    })
     if (!party) {
       return res.status(404).json({ error: '해당 사용자의 파티 정보를 찾을 수 없습니다.' })
     }
