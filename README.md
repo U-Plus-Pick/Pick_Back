@@ -171,16 +171,16 @@ node server.js
 | 필드명                  | 타입          | 설명                            |
 | -------------------- | ----------- | ----------------------------- |
 | `party_id`           | BIGINT (PK) | 파티 고유 ID                      |
-| `party_leader_email` | VARCHAR(50) | 파티장 이메일          |
-| `party_member_email` | JSON        | 파티원 이메일 리스트          |
-| `party_leader_name`  | VARCHAR(50) | 파티장 이름                        |
-| `party_member_name`  | VARCHAR(50) | 파티원 이름 리스트           |
+| `party_leader_email` | VARCHAR(50) | 결합 대표 이메일          |
+| `party_member_email` | JSON        | 결합원 이메일 리스트          |
+| `party_leader_name`  | VARCHAR(50) | 결합 대표 이름                        |
+| `party_member_name`  | VARCHAR(50) | 결합원 이름 리스트           |
 | `party_status`       | ENUM        | 모집 상태 (`모집중`, `모집완료`, `해체` 등) |
 | `created_at`         | DATETIME    | 파티 생성일                        |
 
 지인 결합 파티 정보를 담는 테이블.  
-파티장과 멤버들의 이메일과 이름을 저장하고, 파티 상태(모집중, 모집완료, 해체)를 관리함.  
-멤버 이메일과 이름은 JSON 형태로 여러 명을 저장할 수 있음.
+결합 대표와 결합원들의 이메일과 이름을 저장하고, 파티 상태(모집중, 모집완료, 해체)를 관리함.  
+결합원 이메일과 이름은 JSON 형태로 여러 명을 저장할 수 있음.
 
 2. partyapplicants (파티 신청 정보 테이블)
    
@@ -202,7 +202,7 @@ node server.js
 
 | 필드명             | 타입           | 설명                      |
 | --------------- | ------------ | ----------------------- |
-| `user_email`    | VARCHAR(50)  | 이메일 (PK)                |
+| `user_email`    | VARCHAR(50)  | 이메일                 |
 | `user_name`     | VARCHAR(50)  | 사용자 이름                  |
 | `user_password` | VARCHAR(255) | 암호화된 비밀번호               |
 | `user_phone`    | VARCHAR(20)  | 휴대폰 번호                  |
@@ -218,12 +218,12 @@ node server.js
 | 필드명                     | 타입           | 설명          |
 | ----------------------- | ------------ | ----------- |
 | `id`                    | INT (PK)     | 결제 정보 고유 ID |
-| `leader_email`          | VARCHAR(50)  | 파티장 이메일     |
-| `leader_name`           | VARCHAR(50)  | 파티장 이름      |
-| `leader_bank_name`      | VARCHAR(100) | 파티장 은행명     |
-| `leader_account_number` | VARCHAR(100) | 파티장 계좌번호    |
+| `leader_email`          | VARCHAR(50)  | 결합 대표 이메일     |
+| `leader_name`           | VARCHAR(50)  | 결합 대표 이름      |
+| `leader_bank_name`      | VARCHAR(100) | 결합 대표 은행명     |
+| `leader_account_number` | VARCHAR(100) | 결합 대표 계좌번호    |
 
-파티 리더의 정산 계좌 정보를 저장하는 테이블.  
+결합 대표의 정산 계좌 정보를 저장하는 테이블.  
 정산에 사용됨.
 
 5. chat_rooms (채팅방 테이블)
@@ -305,7 +305,7 @@ LG U+에서 제공하는 다양한 요금제 정보를 저장.
 
 
 ## ERD 관계 요약  
-회원(user_email)은 파티(parties)에 참여할 수 있고, 파티장 또는 멤버 역할을 가짐.
+회원(user_email)은 파티(parties)에 참여할 수 있고, 결합 대표 또는 결합원 역할을 가짐.
 회원(user_email)은 여러 채팅방(chat_rooms)을 가질 수 있음.  
 회원(user_email)은 파티 신청(party_applicant)을 할 수 있음.  
 요금제(plans)는 회원의 plans 필드와 연결되어 있음.  
