@@ -12,17 +12,13 @@ const router = express.Router()
 // 통합된 채팅 엔드포인트
 router.post('/chat', chatWithGPT)
 
-// 채팅 메시지 저장 API
-router.post('/insert-messages', authMiddleware, async (req, res) => {
-  console.log('=== 채팅 메시지 저장 API 호출됨 ===')
-  console.log('Request body:', req.body)
-  
-  try {
-    const { chatroom_id, messages, chatroom_title } = req.body
-    const user_email = req.user.email // authMiddleware에서 추출된 사용자 정보
+// 새 채팅방 생성 API
+router.post('/create-room', authMiddleware, async (req, res) => {
+  console.log('=== 새 채팅방 생성 API 호출됨 ===')
 
-    console.log('User email:', user_email)
-    console.log('Chatroom ID:', chatroom_id)
+  try {
+    const { title, messages } = req.body
+    const user_email = req.user.email
 
     // 사용자 존재 확인
     const user = await User.findOne({ email: user_email })
@@ -33,55 +29,93 @@ router.post('/insert-messages', authMiddleware, async (req, res) => {
       })
     }
 
-    // 기존 채팅방 찾기 (사용자 이메일과 chatroom_id 조합으로)
-    let chatroom = await Chatroom.findOne({ chatroom_id, user_email })
-    console.log('기존 채팅방 찾기 결과:', chatroom ? '존재함' : '없음')
+    // 새 채팅방 생성
+    const chatroom_id = Date.now()
+    const newMessages = messages.map(msg => ({
+      role: msg.sender === 'user' ? 'user' : 'bot',
+      message: msg.text,
+      timestamp: msg.timestamp || new Date(),
+    }))
 
-    if (chatroom) {
-      // 기존 채팅방이 있으면 메시지 추가
-      const newMessages = messages.map(msg => ({
-        role: msg.sender === 'user' ? 'user' : 'bot',
-        message: msg.text,
-        timestamp: msg.timestamp || new Date(),
-      }))
+    const chatroom = new Chatroom({
+      chatroom_id,
+      user_email,
+      chat_message: newMessages,
+      chatroom_title: title || `채팅 ${chatroom_id}`,
+      started_at: new Date(),
+    })
 
-      chatroom.chat_message.push(...newMessages)
+    await chatroom.save()
+    console.log('새 채팅방 생성 완료, ID:', chatroom_id)
 
-      // 제목이 제공되면 업데이트
-      if (chatroom_title) {
-        chatroom.chatroom_title = chatroom_title
-      }
+    res.status(200).json({
+      success: true,
+      chatroom_id,
+      message: '새 채팅방이 생성되었습니다.',
+    })
+  } catch (error) {
+    console.error('채팅방 생성 오류:', error)
+    res.status(500).json({
+      success: false,
+      message: '채팅방 생성 중 오류가 발생했습니다.',
+      error: error.message,
+    })
+  }
+})
 
-      await chatroom.save()
-      console.log('기존 채팅방 업데이트 완료')    } else {
-      // 새 채팅방 생성 - 중복 방지를 위해 고유한 ID 생성
-      let uniqueChatroomId = chatroom_id || Date.now()
-      
-      // 혹시 같은 ID가 이미 존재하는지 확인
-      const existingRoom = await Chatroom.findOne({ chatroom_id: uniqueChatroomId })
-      if (existingRoom) {
-        // 이미 존재하는 경우 타임스탬프 기반으로 새로운 ID 생성
-        uniqueChatroomId = Date.now() + Math.floor(Math.random() * 1000)
-        console.log(`중복 ID 발견, 새 ID 생성: ${chatroom_id} -> ${uniqueChatroomId}`)
-      }
+// 채팅 메시지 저장 API
+router.post('/insert-messages', authMiddleware, async (req, res) => {
+  console.log('=== 채팅 메시지 저장 API 호출됨 ===')
 
-      const newMessages = messages.map(msg => ({
-        role: msg.sender === 'user' ? 'user' : 'bot',
-        message: msg.text,
-        timestamp: msg.timestamp || new Date(),
-      }))
+  try {
+    const { chatroom_id, messages, chatroom_title } = req.body
+    const user_email = req.user.email
 
-      chatroom = new Chatroom({
-        chatroom_id: uniqueChatroomId,
-        user_email,
-        chat_message: newMessages,
-        chatroom_title: chatroom_title || `채팅 ${uniqueChatroomId}`,
-        started_at: new Date(),
+    if (!chatroom_id) {
+      return res.status(400).json({
+        success: false,
+        message: '채팅방 ID가 필요합니다.',
       })
-
-      await chatroom.save()
-      console.log('새 채팅방 생성 완료, ID:', uniqueChatroomId)
     }
+
+    // 사용자 존재 확인
+    const user = await User.findOne({ email: user_email })
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: '사용자를 찾을 수 없습니다.',
+      })
+    }
+
+    // 채팅방 찾기 (사용자 이메일과 chatroom_id로)
+    const chatroom = await Chatroom.findOne({
+      chatroom_id,
+      user_email,
+    })
+
+    if (!chatroom) {
+      return res.status(404).json({
+        success: false,
+        message: '채팅방을 찾을 수 없습니다.',
+      })
+    }
+
+    // 메시지 업데이트
+    const newMessages = messages.map(msg => ({
+      role: msg.sender === 'user' ? 'user' : 'bot',
+      message: msg.text,
+      timestamp: msg.timestamp || new Date(),
+    }))
+
+    chatroom.chat_message = newMessages // 전체 메시지 교체
+
+    // 제목이 제공되면 업데이트
+    if (chatroom_title) {
+      chatroom.chatroom_title = chatroom_title
+    }
+
+    await chatroom.save()
+    console.log('채팅방 메시지 업데이트 완료, ID:', chatroom_id)
 
     res.status(200).json({
       success: true,
@@ -105,10 +139,9 @@ router.get('/rooms', authMiddleware, async (req, res) => {
     const user_email = req.user.email
 
     const chatrooms = await Chatroom.find({ user_email })
-      .sort({ updatedAt: -1 }) // 최근 업데이트 순으로 정렬
+      .sort({ updatedAt: -1 })
       .select('chatroom_id chatroom_title started_at updatedAt chat_message')
 
-    // 프론트엔드 형식에 맞게 변환
     const formattedChatrooms = chatrooms.map(room => ({
       id: room.chatroom_id,
       title: room.chatroom_title || `채팅 ${room.chatroom_id}`,
@@ -116,7 +149,7 @@ router.get('/rooms', authMiddleware, async (req, res) => {
       updatedAt: room.updatedAt,
       messages: room.chat_message.map(msg => ({
         id: msg._id,
-        sender: msg.role,
+        sender: msg.role === 'user' ? 'user' : 'bot',
         text: msg.message,
         timestamp: msg.timestamp,
       })),
