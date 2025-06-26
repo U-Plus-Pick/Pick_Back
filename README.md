@@ -152,7 +152,7 @@ node server.js
 |               | GET    | `/api/users/me`                   | 내 정보 조회 (파티/신청 상태 포함)  |
 |               | PATCH  | `/api/users/me/plan`              | 사용자 요금제 변경                  |
 | **파티 관리**   | GET    | `/api/party/infor`                | 현재 참여 중인 파티 정보 조회       |
-|               | POST   | `/api/party/apply`                | 파티 신청 (리더/멤버 역할 분기)     |
+|               | POST   | `/api/party/apply`                | 파티 신청 (리더/멤버 역할 분리)     |
 |               | POST   | `/api/party/leave`                | 파티 탈퇴                           |
 | **챗봇 서비스** | POST   | `/api/chat/insert-messages`       | 챗봇 대화 메시지 저장               |
 |               | GET    | `/api/chat/rooms`                 | 사용자의 채팅방 목록 조회           |
@@ -273,13 +273,12 @@ LG U+에서 제공하는 다양한 요금제 정보를 저장.
 
 
 ## ERD 관계 요약  
-회원(user_email)은 파티(parties) 에 참여할 수 있고, 파티장 또는 멤버 역할을 가짐.  
-파티(parties)는 결제(payments) 와 연결되어 파티 리더의 정산 정보를 관리.  
-회원(user_email)은 여러 채팅방(chat_bot) 을 가질 수 있음.  
-회원(user_email)은 파티 신청(party_applicant) 을 할 수 있음.  
+회원(user_email)은 파티(parties)에 참여할 수 있고, 파티장 또는 멤버 역할을 가짐.
+회원(user_email)은 여러 채팅방(chat_bot)을 가질 수 있음.  
+회원(user_email)은 파티 신청(party_applicant)을 할 수 있음.  
 요금제(plans)는 회원의 plans 필드와 연결되어 있음.  
 멤버십 혜택(membership_benefits)은 요금제 및 브랜드 혜택 안내에 활용됨.  
-토스 결제(toss_payments)는 회원의 결제 내역을 기록.  
+
 
 
 
