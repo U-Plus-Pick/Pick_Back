@@ -130,7 +130,7 @@ const SYSTEM_PROMPT = `당신은 친절하고 전문적인 LG U+ 통합 고객�
 - 특별 요구사항 (동영상 시청 등)
 
 함수 호출 규칙
-사용자의 요구사항에 따라 반드시 'recommendPlan' 함수를 호출하세요.
+요금제 관련 내용이 나오면 반드시 'recommendPlan' 함수를 호출하세요.
 
 **인자값 설정 가이드:**
 - 'plan_monthly_fee': 사용자가 예산을 언급하지 않으면 9999 (무제한)
@@ -185,7 +185,8 @@ const SYSTEM_PROMPT = `당신은 친절하고 전문적인 LG U+ 통합 고객�
 const keywordRules = [
   {
     pattern: /지인\s?결합/,
-    response: '지인 결합 할인에 대한 정보는 저희 서비스에서 확인할 수 있어요\n`U+Pick url`',
+    response:
+      '지인 결합 할인에 대한 정보는 저희 서비스에서 확인할 수 있어요\n`<a href="https://upluspick.netlify.app/bundle">지인 결합 할인 안내 페이지</a>`',
   },
   {
     pattern: /어떤\s?결합.*(할인|가능|받을|있나|알려)/,
