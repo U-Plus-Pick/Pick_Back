@@ -141,7 +141,7 @@ node server.js
 |--------|------------------------|--------------------------|
 | POST   | `/api/users/register` | 회원가입                 |
 | POST   | `/api/users/login`    | 로그인                   |
-| GET    | `/api/party/infor`    | 요금제 목록 조회         |
+| GET    | `/api/party/infor`    | 파티 정보 조회        |
 | POST   | `/api/party/apply`    | 결합 파티 가입 요청      |
 | POST    | `/api/chat/insert-messages`        | 챗봇 대화 메시지 저장       |
 
