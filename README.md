@@ -86,7 +86,7 @@ LG U+ 이용 고객의 통신 서비스 경험을 향상시키기 위해, 다음
 
 ## 개요
 
-LG U+ 맞춤 요금제 추천, 결합 할인 매칭, 챗봇 및 결제 관리를 담당하는 **Node.js + Express 기반 백엔드 서버**입니다.  
+LG U+ AI 챗봇, 결합, 멤버십 혜택 및 결제 관리를 담당하는 **Node.js + Express 기반 백엔드 서버**입니다.  
 MongoDB를 데이터베이스로 사용하며, RESTful API와 Socket.IO 기반 실시간 챗봇 통신을 제공합니다.
 
 ---
@@ -300,16 +300,10 @@ LG U+에서 제공하는 다양한 요금제 정보를 저장.
 | `min_phones`         | INT | 최소 폰 수   |
 | `min_price` | INT        | 최소 요금 합계                  |
 | `discount_amount`       | INT | 할인 금액 |   
+
 챗봇에서 가족 결합 할인 금액 계산할 때 사용
 
 
-
-## ERD 관계 요약  
-회원(user_email)은 파티(parties)에 참여할 수 있고, 결합 대표 또는 결합원 역할을 가짐.
-회원(user_email)은 여러 채팅방(chat_rooms)을 가질 수 있음.  
-회원(user_email)은 파티 신청(party_applicant)을 할 수 있음.  
-요금제(plans)는 회원의 plans 필드와 연결되어 있음.  
-멤버십 혜택(membership_benefits)은 요금제 및 브랜드 혜택 안내에 활용됨.  
 
 
 
