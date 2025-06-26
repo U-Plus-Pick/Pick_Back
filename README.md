@@ -166,25 +166,40 @@ node server.js
 
 
 ## ERD TABLE  
-1. 🧑‍🤝‍🧑 parties (결합 파티 테이블)
+1. parties (결합 파티 테이블)
    
 | 필드명                  | 타입          | 설명                            |
 | -------------------- | ----------- | ----------------------------- |
 | `party_id`           | BIGINT (PK) | 파티 고유 ID                      |
-| `party_leader_email` | VARCHAR(50) | 파티장 이메일 (FK - users)          |
-| `party_member_email` | JSON        | 파티원 이메일 리스트 (JSON 배열)         |
+| `party_leader_email` | VARCHAR(50) | 파티장 이메일          |
+| `party_member_email` | JSON        | 파티원 이메일 리스트          |
 | `party_leader_name`  | VARCHAR(50) | 파티장 이름                        |
-| `party_member_name`  | VARCHAR(50) | 파티원 이름 리스트 (JSON 배열)          |
+| `party_member_name`  | VARCHAR(50) | 파티원 이름 리스트           |
 | `party_status`       | ENUM        | 모집 상태 (`모집중`, `모집완료`, `해체` 등) |
 | `created_at`         | DATETIME    | 파티 생성일                        |
 
-가족/지인 결합 파티 정보를 담는 테이블.  
-파티장과 멤버들의 이메일과 이름을 저장하고, 파티 상태(모집중, 모집완료, 해체)를 관리함.
+지인 결합 파티 정보를 담는 테이블.  
+파티장과 멤버들의 이메일과 이름을 저장하고, 파티 상태(모집중, 모집완료, 해체)를 관리함.  
 멤버 이메일과 이름은 JSON 형태로 여러 명을 저장할 수 있음.
 
-2. 👤 users (회원 테이블)
-
+2. partyapplicants (파티 신청 정보 테이블)
    
+| 필드명                  | 타입          | 설명                            |
+| -------------------- | ----------- | ----------------------------- |
+| `party_id`           | BIGINT (PK) | 파티 고유 ID                      |
+| `applicant_phone` | VARCHAR(20) | 휴대폰 번호         |
+| `applicant_email` | VARCHAR(50)        | 신청자 이메일         |
+| `applicant_birth`  | DATE | 생년월일                        |
+| `applicant_plan`  | VARCHAR(50) | 파티원 이름 리스트          |
+| `party_status`       | VARCHAR(10)        | 신청 구분 |
+| `applicant_priority`         | INT    | 우선 순위  
+
+파티 신청 회원 정보 저장 테이블  
+파티 id : 파티 결성 전이면 0, 파티 결성되면 해당 파티의 id, 파티 해체되면 다시 0  
+우선순위 : 파티 해체된 사람을 위한 우선권 부여 기준  
+
+ 3. users (회원 테이블)
+
 | 필드명             | 타입           | 설명                      |
 | --------------- | ------------ | ----------------------- |
 | `user_email`    | VARCHAR(50)  | 이메일 (PK)                |
@@ -192,13 +207,13 @@ node server.js
 | `user_password` | VARCHAR(255) | 암호화된 비밀번호               |
 | `user_phone`    | VARCHAR(20)  | 휴대폰 번호                  |
 | `user_birth`    | DATE         | 생년월일                    |
-| `plans`         | VARCHAR(50)  | 가입한 요금제 이름 (FK - plans) |
+| `plans`         | VARCHAR(50)  | 가입한 요금제 이름  |
 
 사용자 계정 정보 저장 테이블.  
 이메일과 전화번호는 고유해야 하며, 비밀번호는 암호화되어 저장됨.  
 사용자가 가입한 요금제 이름도 저장.
 
-3. 💸 payments (결제 계좌 테이블)
+4. payments (결제 계좌 테이블)
 
 | 필드명                     | 타입           | 설명          |
 | ----------------------- | ------------ | ----------- |
@@ -209,28 +224,27 @@ node server.js
 | `leader_account_number` | VARCHAR(100) | 파티장 계좌번호    |
 
 파티 리더의 정산 계좌 정보를 저장하는 테이블.  
-결제 관련 서류 제출 및 정산에 사용됨.
+정산에 사용됨.
 
-4. 💬 chat_bot (채팅방 테이블)
+5. chat_rooms (채팅방 테이블)
 
 | 필드명              | 타입          | 설명                   |
 | ---------------- | ----------- | -------------------- |
 | `chatroom_id`    | INT (PK)    | 채팅방 고유 ID            |
-| `user_email`     | VARCHAR(50) | 사용자 이메일 (FK - users) |
+| `user_email`     | VARCHAR(50) | 사용자 이메일  |
 | `started_at`     | DATETIME    | 채팅 시작 시각             |
 | `ended_at`       | DATETIME    | 채팅 종료 시각             |
-| `chat_message`   | JSON        | 채팅 메시지 (JSON 배열)     |
+| `chat_message`   | JSON        | 채팅 메시지     |
 | `chatroom_title` | VARCHAR(30) | 채팅방 이름               |  
 
 사용자의 챗봇 대화 기록을 저장하는 테이블.  
 메시지 내용은 JSON 배열로 저장되어 대화 흐름을 관리.
 
-
-5. 📱 plans (요금제 테이블)
+6. plans (요금제 테이블)
 
 | 필드명                    | 타입           | 설명          |
 | ---------------------- | ------------ | ----------- |
-| `plan_name`            | VARCHAR(200) | 요금제 이름 (PK) |
+| `plan_name`            | VARCHAR(200) | 요금제 이름  |
 | `plan_monthly_fee`     | INT          | 월 요금        |
 | `plan_data_count`      | INT          | 데이터 용량 (GB) |
 | `plan_smart_benefit`   | TEXT         | 스마트 기기 혜택   |
@@ -244,10 +258,8 @@ node server.js
 LG U+에서 제공하는 다양한 요금제 정보를 저장.  
 각 요금제별 혜택과 기본 정보가 포함됨.
 
-
-6. 💳 toss_payments (토스 결제 테이블)
-
-
+7. toss_payments (토스 결제 테이블)
+   
 | 필드명                | 타입           | 설명                        |
 | ------------------ | ------------ | ------------------------- |
 | `id`               | INT (PK)     | 결제 ID                     |
@@ -258,10 +270,10 @@ LG U+에서 제공하는 다양한 요금제 정보를 저장.
 | `paid_status`      | ENUM         | 결제 상태 (`SUCCESS`, `FAIL`) |
 | `paid_at`          | DATETIME     | 결제 시각                     |
 
-토스 결제 시스템과 연동된 결제 내역을 저장.
 
-7. 🎁 membership_benefits (멤버십 혜택 테이블)
 
+8. membership_benefits (멤버십 혜택 테이블)
+   
 | 필드명                      | 타입          | 설명                      |
 | ------------------------ | ----------- | ----------------------- |
 | `membership_tap`         | VARCHAR(10) | 혜택 구분 (`VIP 콕`, `기본`)   |
@@ -271,10 +283,30 @@ LG U+에서 제공하는 다양한 요금제 정보를 저장.
 
 멤버십 등급별, 브랜드별 혜택 정보를 저장.
 
+9. 서류 제출 테이블
+   
+| 필드명                      | 타입          | 설명                      |
+| ------------------------ | ----------- | ----------------------- |
+| `_id`         | VARCHAR(50) | 자동 생성 ID   |
+| `user_email`       | VARCHAR(50) | 사용자 이메일                 |
+| `documents_name` | VARCHAR(50)        | 문서 이름                  |
+| `documents`       | BLOB | 실제 문서 파일 |  
+| `submitted_at`       | DATETIME | 제출시간 |  
+
+10. bundle_benefits (결합 할인 테이블)
+   
+| 필드명                      | 타입          | 설명                      |
+| ------------------------ | ----------- | ----------------------- |
+| `min_phones`         | INT | 최소 폰 수   |
+| `min_price` | INT        | 최소 요금 합계                  |
+| `discount_amount`       | INT | 할인 금액 |   
+챗봇에서 가족 결합 할인 금액 계산할 때 사용
+
+
 
 ## ERD 관계 요약  
 회원(user_email)은 파티(parties)에 참여할 수 있고, 파티장 또는 멤버 역할을 가짐.
-회원(user_email)은 여러 채팅방(chat_bot)을 가질 수 있음.  
+회원(user_email)은 여러 채팅방(chat_rooms)을 가질 수 있음.  
 회원(user_email)은 파티 신청(party_applicant)을 할 수 있음.  
 요금제(plans)는 회원의 plans 필드와 연결되어 있음.  
 멤버십 혜택(membership_benefits)은 요금제 및 브랜드 혜택 안내에 활용됨.  
