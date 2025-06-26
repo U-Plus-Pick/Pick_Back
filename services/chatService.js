@@ -186,7 +186,7 @@ const keywordRules = [
   {
     pattern: /지인\s?결합/,
     response:
-      '지인 결합 할인에 대한 정보는 저희 서비스에서 확인할 수 있어요\n`<a href="https://upluspick.netlify.app/bundle">지인 결합 할인 안내 페이지</a>`',
+      '지인 결합 할인에 대한 정보는 저희 서비스에서 확인할 수 있어요<br><a href="https://upluspick.netlify.app/bundle">지인 결합 할인 안내 페이지</a>',
   },
   {
     pattern: /어떤\s?결합.*(할인|가능|받을|있나|알려)/,
